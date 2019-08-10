@@ -211,8 +211,6 @@ class NamecoinHistoryNetblockMongoDB(Task):
                     Netblock.Netblock],description='netblock in CIDR notation\nexample: 91.243.80.0/24')
         ep_coll.add_enter_param('server', 'Host with MongoDB', ValueType.String, is_array=False, required=True,
                                 default_value="68.183.0.119:27017")
-        ep_coll.add_enter_param('server', 'host with MongoDB', ValueType.String, is_array=False, required=True,
-                                default_value="68.183.0.119:27017")
         ep_coll.add_enter_param('usermongodb', 'user', ValueType.String, is_array=False, required=True,
                                 default_value="anonymous")
         ep_coll.add_enter_param('passwordmongodb', 'password', ValueType.String, is_array=False, required=True,
