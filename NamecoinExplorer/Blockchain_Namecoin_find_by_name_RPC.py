@@ -179,10 +179,13 @@ def return_massive_about_domains(domains, server, threads, lg, user, password):
         future_rows = {executor.submit(name_history_one, namecoin['domain'], namecoin['namecoin_domain'],
                                        server, user, password):
                            namecoin for namecoin in namecoins}
+        i = 1
         for future in concurrent.futures.as_completed(future_rows):
             domain_try = future_rows[future]
             result = future.result()
             if result:
+                lg.info(f"{i}. done. {domain_try['domain']}, {domain_try['namecoin_domain']}")
+                i += 1
                 for line in result:
                     yield line
 
