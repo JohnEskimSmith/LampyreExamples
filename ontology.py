@@ -1,4 +1,5 @@
 from lighthouse import *
+from os.path import join as join_path
 
 NAME = 'System ontology'
 ONTOLOGY_ID = 'b811dc34-b029-46fb-a030-8094fc3ce096'
@@ -510,6 +511,10 @@ class AttributesProvider:
         def RegistrationId(self):
             return Attributes.str('Registration id')
 
+    @property
+    def Netblock(self):
+        return self.str('Netblock')
+
     # region Internal methods
     def generate(self, name, vtype):
         if not name:
@@ -980,6 +985,13 @@ class PhoneBook(metaclass=Object):
 
     IdentAttrs = [PhoneNumber, Credentials]
     CaptionAttrs = [PhoneNumber, Credentials]
+
+class Netblock(metaclass=Object):
+    Netblock = Attributes.Netblock
+
+    IdentAttrs = CaptionAttrs = [Netblock]
+    Image = Utils.base64string(join_path('static/icons/common', 'netblock.png'))
+
 # endregion
 # endregion
 
