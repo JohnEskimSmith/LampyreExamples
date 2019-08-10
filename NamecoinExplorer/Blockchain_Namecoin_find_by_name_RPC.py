@@ -61,7 +61,7 @@ def get_block_hashs(hashs, server, user, password):
             return data['result']
 
 
-def get_block_info(hashs, server):
+def get_block_info(hashs, server, user, password):
     headers = {'content-type':'text/plain'}
     if isinstance(hashs, collections.Iterable) and not isinstance(hashs, str):
         v = hashs
@@ -76,7 +76,7 @@ def get_block_info(hashs, server):
     }
 
     response = requests.post(
-        server, data=json.dumps(payload), headers=headers, auth=HTTPBasicAuth("user", "moscow"))
+        server, data=json.dumps(payload), headers=headers, auth=HTTPBasicAuth(user, password))
 
     if response.ok:
         data = response.json()
@@ -121,7 +121,7 @@ def name_history_one(domain, value, server, user, password):
         hash_block = None
         if 'height' in tmp_result:
             h = get_block_hashs(tmp_result['height'], server, user, password)
-            info = get_block_info(h, server)
+            info = get_block_info(h, server, user, password)
             try:
                 timeblock = datetime.datetime.utcfromtimestamp(info['time'])
                 hash_block = info['hash']
