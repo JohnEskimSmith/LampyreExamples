@@ -407,6 +407,8 @@ class AttributesProvider:
         def Filename(self):
             return Attributes.str('Filename')
 
+
+
         @property
         def FileType(self):
             return Attributes.str('File type')
@@ -514,6 +516,12 @@ class AttributesProvider:
     @property
     def Netblock(self):
         return self.str('Netblock')
+
+    @property
+    def FilePath(self):
+        return Attributes.str('File path')
+
+
 
     # region Internal methods
     def generate(self, name, vtype):
@@ -985,6 +993,7 @@ class PhoneBook(metaclass=Object):
 
     IdentAttrs = [PhoneNumber, Credentials]
     CaptionAttrs = [PhoneNumber, Credentials]
+
 
 class Netblock(metaclass=Object):
     Netblock = Attributes.Netblock
