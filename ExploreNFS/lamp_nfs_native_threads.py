@@ -6,7 +6,7 @@
 #1. Changed for request with Lampyre: Insurgent2018 (https://habr.com/ru/post/444382/)
 #2. Changed for request with Lampyre: sai aka eskim.john.smith
 
-from ipaddress import ip_network, ip_address
+from ipaddress import ip_address, ip_network, IPv4Network, IPv6Network, IPv4Address, IPv6Address
 import collections
 from string import printable
 import concurrent.futures
@@ -15,6 +15,7 @@ import socket
 import time
 from random import randint
 import datetime
+import json
 
 try:
     from ontology import (
@@ -132,9 +133,11 @@ class RPC(object):
 
             data = data[24:]
         except struct.error:
-            raise RPCProtocolError("incorrect struct size")
+            pass
+            # raise RPCProtocolError("incorrect struct size")
         except Exception as e:
-            raise e
+            pass
+            # raise e
 
         return data
 
@@ -614,44 +617,68 @@ def showmount(host, port, timeout):
         pass
 
 
-def reparse_record_from_exports(record_host):
+def reparse_record_from_exports(record_host, unpack_network):
     add_block = {}
     _tmp = None
-    if '/' in record_host:
+    add_block['ipv4'] = []
+    add_block['ipv6'] = []
+    if '/' in record_host and ':' not in record_host:
         try:
-            _tmp = str(ip_network(record_host))
-            add_block['network'] = _tmp
-            _tmp = list(map(str, ip_network(record_host)))
-            if len(_tmp) == 1:
-                add_block['ip'] = record_host.split('/')[0]
+            add_block['network_v4'] = str(IPv4Network(record_host))
+            if unpack_network:
+                add_block['ipv4'] = [_ip for _ip in map(str, _tmp)]
+            else:
+                add_block['ipv4'] = [str(IPv4Network(record_host)[0])]
         except:
             try:
-                _tmp = str(ip_address(record_host.split('/')[0]))
-                add_block['ip'] = _tmp
+                _ip = record_host.split('/')[0]
+                _ip = str(IPv4Address(_ip))
+                add_block['ipv4'].append(_ip)
             except:
                 pass
-    else:
+    elif '/' in record_host and ':' in record_host:
         try:
-            _tmp = str(ip_address(record_host))
-            add_block['ip'] = _tmp
+            add_block['network_v6'] = str(IPv6Network(record_host))
         except:
             pass
-        if not _tmp:
+    elif '/' not in record_host and ':' in record_host:
+        try:
+            add_block['ipv6'].append(str(IPv6Address(record_host)))
+        except:
+            pass
+    else:
+        try:
+            add_block['ipv4'].append(str(IPv4Address(record_host)))
+        except:
             if 'everyone' not in record_host and record_host != '*' and record_host != 'unknown':
                 if all(c in printable for c in record_host):
                     add_block['host'] = record_host
 
     add_block['status'] = record_host
-    return add_block
+    result = []
+    if len(add_block['ipv6']) > 0:
+        add_block['ipv6'] = add_block['ipv6'][0]
+        result.append(add_block)
+    else:
+        add_block['ipv6'] = ''
+    if len(add_block['ipv4']) == 0:
+        add_block['ipv4'] = ''
+    else:
+        for ipv4 in add_block['ipv4']:
+            _c = add_block.copy()
+            _c['ipv4'] = ipv4
+            result.append(_c)
+    if len(add_block['ipv4']) ==0 and len(add_block['ipv6']) == 0:
+        result.append(add_block)
+    return result
 
 
-def process_get_nfs(host, port, timeout, actions, uid, gid, auth_hostname, recurse):
+def process_get_nfs(host, port, unpack_network, timeout, actions, uid, gid, auth_hostname, recurse, lg):
     try:
         portmap = Portmap(host, 111, timeout)
         portmap.connect()
         res = portmap.null()
         portmap.disconnect()
-
         if res:
             if "list_mounts" in actions:
                 iter_shomount = showmount(host, port, timeout)
@@ -659,23 +686,19 @@ def process_get_nfs(host, port, timeout, actions, uid, gid, auth_hostname, recur
                     for item in iter_shomount:
                         current_day = datetime.datetime.now().replace(microsecond=0)
                         host_query = host
-                        shared_path = item["path"]
                         _result = {'current_day': current_day,
                                    'host_query': host_query,
-                                   'shared_path': shared_path}
-                        for i in item["authorized"]:
-                            _result.update(reparse_record_from_exports(i))
-                            if _result['status'] == ' ':
-                                _result['status'] = 'unknown'
-                            yield _result
-                else:
-                    pass
+                                   'shared_path': item["path"]}
+                        for auth_data in item["authorized"]:
+                            for line in reparse_record_from_exports(auth_data, unpack_network):
+                                _result.update(line)
+                                yield _result
+
     except OSError:
         pass
     except Exception as e:
         print("%s:%d Exception %s:%s" % (host, port, type(e), e))
-        raise e
-
+        # raise e
 
 
 # ---- change Insurgent2018
@@ -718,7 +741,7 @@ def reparse_ip_hosts(hosts):
 
 
 # scans for open ports, # like ping
-def async_check_hosts_ports(list_ip_port, timeout=3, threads=256):
+def async_check_hosts_ports(list_ip_port, lg, timeout=3, threads=256):
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         future_rows = {executor.submit(is_open_port, host_port, timeout):
                            host_port for host_port in list_ip_port}
@@ -726,25 +749,27 @@ def async_check_hosts_ports(list_ip_port, timeout=3, threads=256):
             server_try = future_rows[future]
             result = future.result()
             if result:
+                lg.info(f'online: {server_try}')
                 yield server_try
 
 
-def return_list_ip(in_ips):  # list
+def return_list_ip(in_ips, lg):  # list
     ips = []
     for input_ip in set(map(lambda z: z.strip(), in_ips)):
         ips.extend(reparse_ip_hosts(input_ip))
     ports = [111, 2049]
     targets = ((ip, port) for ip in ips for port in ports)
-    need_ips = async_check_hosts_ports(targets)  # like ping
+    need_ips = async_check_hosts_ports(targets, lg)  # like ping
     return need_ips
 
 
-def main_scan(in_ips):  # list
-    current_targets = (ip for ip, port in return_list_ip(in_ips))
+def main_scan(in_ips, lg):  # list
+    current_targets = (ip for ip, port in return_list_ip(in_ips, lg))
     return current_targets
 
 
-def main_nfs(targets, _timeout=10, threads=256):
+
+def main_nfs(targets, unpack_network, log_writer, _timeout=10, workers=32):
     # set default values
     port = 111
     timeout = _timeout
@@ -753,20 +778,26 @@ def main_nfs(targets, _timeout=10, threads=256):
     gid = 0
     hostname = 'nfsclient'
     recurse = 1
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
-        future_rows = {executor.submit(process_get_nfs, ip, port,  timeout, actions, uid, gid, hostname, recurse):
+    i = 1
+    c_targets = targets.__len__()
+    log_writer.info(f'all targets:{c_targets}')
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        future_rows = {executor.submit(process_get_nfs, ip, port,  unpack_network, timeout, actions, uid, gid, hostname, recurse, log_writer):
                            ip for ip in targets}
-        ready_hosts = []
-        for future in concurrent.futures.as_completed(future_rows):
-            host_try = future_rows[future]
-            if host_try not in ready_hosts:
-                result = future.result()
-                if result:
-                    for line in result:
-                        yield line
-                ready_hosts.append(host_try)
 
+        for future in concurrent.futures.as_completed(future_rows):
+            ip = future_rows[future]
+            result = future.result()
+            if result:
+                _tmp = [line for line in result]
+                results.extend(_tmp)
+                if len(_tmp) > 0:
+                    log_writer.info(f'{i} from({c_targets}). done host:{ip}')
+                else:
+                    log_writer.info(f"{i} from({c_targets}). not found:{ip}")
+            i += 1
+    return results
 
 class NFSHeader(metaclass=Header):
     display_name = 'Search data from NFS service'
@@ -774,8 +805,10 @@ class NFSHeader(metaclass=Header):
     current_day = Field('Date', ValueType.Datetime)
     host_query = Field('Search ip', ValueType.String)
     shared_path = Field('NFS path', ValueType.String)
-    ip = Field('ip address', ValueType.String)
-    network = Field('network address', ValueType.String)
+    ipv4 = Field('IPv4 address', ValueType.String)
+    ipv6 = Field('IPv6 address', ValueType.String)
+    network_v4 = Field('network(IPv4) address', ValueType.String)
+    network_v6 = Field('network(IPv6) address', ValueType.String)
     host = Field('host', ValueType.String)
     status = Field('raw record', ValueType.String)
 
@@ -806,28 +839,40 @@ class SearchDataNFS(Task):
     def get_enter_params(self):
         ep_coll = EnterParamCollection()
         ep_coll.add_enter_param('ips', 'IP', ValueType.String, is_array=True, description="""IPs, networks, e.g.:\n1. 192.168.1.1\n2. 192.168.1.0/24""")
+        ep_coll.add_enter_param('unpack_network', 'Unpack network record', ValueType.Boolean, default_value=False)
         ep_coll.add_enter_param('timeout', 'timeout', ValueType.Integer, is_array=False,
                                 predefined_values=[3, 7, 10, 15], default_value=7,
                                 description='timeout, int value')
+        ep_coll.add_enter_param('max_threads', 'Max. threads', ValueType.Integer, predefined_values= [8, 16, 32],
+                                default_value=8, required=True)
 
         return ep_coll
 
     def execute(self, enter_params, result_writer, log_writer, temp_dir=None):
-
+        unpack_network = enter_params.unpack_network
+        max_threads = enter_params.max_threads
         scan_network = set(map(lambda z:z.strip(), enter_params.ips))
 
         time_for_connect = enter_params.timeout
         from warnings import filterwarnings
         filterwarnings("ignore")
-        targets = main_scan(scan_network)
+        like_cache = []
+        targets = set(list(main_scan(scan_network, log_writer)))
         fields_table = NFSHeader.get_fields()
-        info = main_nfs(targets, _timeout=time_for_connect, threads=256)
-        for data_id in info:
-            tmp = NFSHeader.create_empty()
-            for field in fields_table:
-                if field in data_id:
-                    tmp[fields_table[field]] = data_id[field]
-            result_writer.write_line(tmp, header_class=NFSHeader)
+        all_nfs_shares = main_nfs(targets, unpack_network, log_writer, _timeout=time_for_connect, workers=max_threads)
+        for row in all_nfs_shares:
+            # like cache
+            _tmp_c = row.copy()
+            _tmp_c.pop('current_day')
+            _c = json.dumps(_tmp_c)
+            # ---------
+            if _c not in like_cache:
+                like_cache.append(_c)
+                tmp = NFSHeader.create_empty()
+                for field in fields_table:
+                    if field in row:
+                        tmp[fields_table[field]] = row[field]
+                result_writer.write_line(tmp, header_class=NFSHeader)
 
 
 if __name__ == '__main__':
@@ -837,24 +882,26 @@ if __name__ == '__main__':
     filterwarnings("ignore")
 
     class EnterParameters:
-        ips = ['192.168.1.0/24']
-        timeout = 3
+        ips = ['46.32.248.0/24']
+        # ips = ['46.32.248.187', '46.32.248.141']
+        unpack_network = False
+        max_threads = 16
+        timeout = 5
 
-    class ResultWriterSub:
-        @staticmethod
-        def write_line(line: dict, header_class: Header):
-            print(','.join([str(v) for v in line.values()]))
+    class WriterFake:
+        @classmethod
+        # ResultWriter method
+        def write_line(cls, values, header_class=None):
+            print({f.display_name: v for f, v in values.items()})
 
-    class LogWriterSub:
-        @staticmethod
-        def write(line, *args, **kwargs):
-            print(line.format(args))
+        @classmethod
+        # LogWriter method
+        def info(cls, message, *args):
+            print(message, *args)
 
-        info = write
-        error = write
+        @classmethod
+        # LogWriter method
+        def error(cls, message, *args):
+            print(message, *args)
 
-    temp_dir = '.'
-
-    task = SearchDataNFS()
-
-    task.execute(EnterParameters, ResultWriterSub, LogWriterSub, temp_dir)
+    SearchDataNFS().execute(EnterParameters, WriterFake, WriterFake, None)
