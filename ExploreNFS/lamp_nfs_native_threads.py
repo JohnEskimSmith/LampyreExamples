@@ -15,15 +15,18 @@ import socket
 import time
 from random import randint
 import datetime
-import json
+from json import dumps
+from os.path import join as join_path
 
 try:
     from ontology import (
-        Task, Header, Utils, Field, ValueType, EnterParamCollection, Attributes)
-except ImportError as ontology_exception:
-    print('missing or invalid ontology')
-    raise ontology_exception
+        Task, Header, Object, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
+        MacroCollection, Schema, EnterParamCollection, SchemaCollection, GraphMappingFlags, BinaryType, Constants,
+        Attributes, IP, Domain, Entity, Link, Netblock)
 
+except ImportError as ontology_exception:
+    print('...missing or invalid ontology')
+    raise ontology_exception
 
 class RPC(object):
     def __init__(self, host, port, timeout):
@@ -768,7 +771,6 @@ def main_scan(in_ips, lg):  # list
     return current_targets
 
 
-
 def main_nfs(targets, unpack_network, log_writer, _timeout=10, workers=32):
     # set default values
     port = 111
@@ -799,6 +801,11 @@ def main_nfs(targets, unpack_network, log_writer, _timeout=10, workers=32):
             i += 1
     return results
 
+
+def not_empty(field: Field):
+    return Condition(field, Operations.NotEqual, '')
+
+
 class NFSHeader(metaclass=Header):
     display_name = 'Search data from NFS service'
 
@@ -813,6 +820,96 @@ class NFSHeader(metaclass=Header):
     status = Field('raw record', ValueType.String)
 
 
+class ShareNFS(metaclass=Object):
+    FilePath = Attributes.FilePath
+    Filename = Attributes.System.Filename
+    IdentAttrs = [FilePath]
+    CaptionAttrs = [Filename]
+    Image = Utils.base64string(join_path('../static/icons/common', 'directory.png'))
+
+
+class ShareNFSToIP(metaclass=Link):
+    name = Utils.make_link_name(ShareNFS, IP)
+
+    DateTime = Attributes.System.Datetime
+
+    Begin = ShareNFS
+    End = IP
+
+
+class IPToShareNFS(metaclass=Link):
+    name = Utils.make_link_name(IP, ShareNFS)
+
+    DateTime = Attributes.System.Datetime
+
+    Begin = IP
+    End = ShareNFS
+
+
+class NetblockToShareNFS(metaclass=Link):
+    name = Utils.make_link_name(Netblock, ShareNFS)
+
+    DateTime = Attributes.System.Datetime
+
+    Begin = Netblock
+    End = ShareNFS
+
+
+class EntityToShareNFS(metaclass=Link):
+    name = Utils.make_link_name(Entity, ShareNFS)
+
+    DateTime = Attributes.System.Datetime
+
+    Begin = Entity
+    End = ShareNFS
+
+
+class DomainToShareNFS(metaclass=Link):
+    name = Utils.make_link_name(Domain, ShareNFS)
+
+    DateTime = Attributes.System.Datetime
+
+    Begin = Domain
+    End = ShareNFS
+
+
+class NFSSchema(metaclass=Schema):
+    name = 'NFS Schema'
+    Header = NFSHeader
+    # region Schema objects
+    SchemaIP_Search = SchemaObject(IP, mapping={IP.IP: Header.host_query})
+    SchemaIP_granted = SchemaObject(IP, mapping={IP.IP: Header.ipv4})
+    SchemaDomain = SchemaObject(Domain, mapping={Domain.Domain: Header.host})
+    SchemaShareNFS = SchemaObject(ShareNFS, mapping={ShareNFS.FilePath: [Header.host_query, Header.shared_path],
+                                                      ShareNFS.Filename:Header.shared_path})
+    SchemaEntity = SchemaObject(Entity, mapping={Entity.Value: Header.status})
+    SchemaNetblock = SchemaObject(Netblock, mapping={Netblock.Netblock: Header.network_v4})
+    # endregion
+
+    # region Schema links
+    SchemaLink_DirToIP = ShareNFSToIP.between(SchemaShareNFS, SchemaIP_Search,
+                                               mapping={ShareNFSToIP.DateTime: Header.current_day},
+                                               conditions=[not_empty(Header.host_query)])
+
+    SchemaLink_IPtoDir = IPToShareNFS.between(SchemaIP_granted, SchemaShareNFS,
+                                               mapping={IPToShareNFS.DateTime: Header.current_day},
+                                               conditions=[not_empty(Header.ipv4)])
+
+    SchemaLink_NetblockToDir = NetblockToShareNFS.between(SchemaNetblock, SchemaShareNFS,
+                                                mapping={NetblockToShareNFS.DateTime: Header.current_day},
+                                               conditions=[not_empty(Header.network_v4)])
+
+    SchemaLink_EntityToDir = EntityToShareNFS.between(SchemaEntity, SchemaShareNFS,
+                                               mapping={EntityToShareNFS.DateTime: Header.current_day},
+                                               conditions=[not_empty(Header.status)])
+
+    SchemaLink_DomainToDir = DomainToShareNFS.between(SchemaDomain, SchemaShareNFS,
+                                               mapping={DomainToShareNFS.DateTime: Header.current_day},
+                                               conditions=[not_empty(Header.host)])
+    # endregion
+
+
+
 class SearchDataNFS(Task):
     def __init__(self):
         super().__init__()
@@ -825,7 +922,7 @@ class SearchDataNFS(Task):
         return 'Explore: NFS(native)'
 
     def get_category(self):
-        return 'Local tasks'
+        return '!Examples'
 
     def get_description(self):
         return 'Explore NFS resourses'
@@ -836,13 +933,25 @@ class SearchDataNFS(Task):
     def get_headers(self):
         return NFSHeader
 
+    def get_schemas(self):
+        return SchemaCollection(NFSSchema)
+
+
+    def get_graph_macros(self):
+        return MacroCollection(
+            Macro(name='NFS explorer', mapping_flags=[GraphMappingFlags.Completely],
+                  schemas=[NFSSchema]))
+
     def get_enter_params(self):
         ep_coll = EnterParamCollection()
-        ep_coll.add_enter_param('ips', 'IP', ValueType.String, is_array=True, description="""IPs, networks, e.g.:\n1. 192.168.1.1\n2. 192.168.1.0/24""")
-        ep_coll.add_enter_param('unpack_network', 'Unpack network record', ValueType.Boolean, default_value=False)
+        ep_coll.add_enter_param('ips', 'IP', ValueType.String, is_array=True,
+                                value_sources=[Attributes.System.IPAddress, Attributes.System.IPAndPort, Attributes.Netblock],
+                                description="""IPs, networks, e.g.:\n1. 192.168.1.1\n2. 192.168.1.0/24""")
+        ep_coll.add_enter_param('unpack_network', 'Unpack network record', ValueType.Boolean, default_value=False,
+                                description = """unpack network:\n192.168.1.0/24 -> 192.168.1.0, 192.168.1.1, 192.168.1.2 .. 192.168.1.255""")
         ep_coll.add_enter_param('timeout', 'timeout', ValueType.Integer, is_array=False,
                                 predefined_values=[3, 7, 10, 15], default_value=7,
-                                description='timeout, int value')
+                                description='timeout, int. value')
         ep_coll.add_enter_param('max_threads', 'Max. threads', ValueType.Integer, predefined_values= [8, 16, 32],
                                 default_value=8, required=True)
 
@@ -864,14 +973,17 @@ class SearchDataNFS(Task):
             # like cache
             _tmp_c = row.copy()
             _tmp_c.pop('current_day')
-            _c = json.dumps(_tmp_c)
+            _c = dumps(_tmp_c)
             # ---------
             if _c not in like_cache:
                 like_cache.append(_c)
                 tmp = NFSHeader.create_empty()
                 for field in fields_table:
                     if field in row:
-                        tmp[fields_table[field]] = row[field]
+                        if isinstance(row[field], str):
+                            tmp[fields_table[field]] = row[field].strip()
+                        else:
+                            tmp[fields_table[field]] = row[field]
                 result_writer.write_line(tmp, header_class=NFSHeader)
 
 
