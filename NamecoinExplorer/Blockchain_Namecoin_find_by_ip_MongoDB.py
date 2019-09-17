@@ -84,6 +84,26 @@ def return_massive_about_ips(ips, server, user, password):
                     _result_row['ip'] = ip.strip()
                     yield _result_row
 
+    def return_info(search_dict, need_fields):
+        rows = db[collection_name_tx].find(search_dict, need_fields)
+        massive_all = [row for row in rows]
+
+        _need_block_fields = {'_id': 1, 'height': 1}
+        hashs_block = list(set([row['blockhash'] for row in massive_all]))
+        _search_filter = {"_id": {"$in": hashs_block}}
+        _tmp = db[collection_name_blocks].find(_search_filter, _need_block_fields)
+        _cache = {}
+        for row in _tmp:
+            if row['_id'] not in _cache:
+                _cache[row['_id']] = row['height']
+
+        for row in massive_all:
+            if row['blockhash'] in _cache:
+                row['height_block'] = _cache[row['blockhash']]
+            rows_for_table_lampyre = prepare_row(row)
+            for _row in rows_for_table_lampyre:
+                yield _row
+
     ip, port = server.split(":")
     dbname = "NamecoinExplorer"
     collection_name_blocks = "Blocks"
@@ -100,16 +120,11 @@ def return_massive_about_ips(ips, server, user, password):
                        'blockhash': 1,
                        'txid': 1,
                        '_id': 0}
-        rows = db[collection_name_tx].find(search_dict, need_fields)
-        for row in rows:
-            _block = {'_id': row['blockhash']}
-            _need_fields_block = {'height': 1, '_id': 0}
-            _tmp = db[collection_name_blocks].find_one(_block, _need_fields_block)
-            row['height_block'] = _tmp['height']
-            rows_for_table_lampyre = prepare_row(row)
-            if rows_for_table_lampyre:
-                for _row in rows_for_table_lampyre:
-                    yield _row
+        for line in return_info(search_dict, need_fields):
+            yield line
+
+
+
 
 
 def return_namecoin(namedomain):
@@ -220,7 +235,10 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        ips = ['185.82.218.112']
+        # ips = ['185.82.218.112']
+        # ips = ['132.148.40.220', '185.126.202.186', '37.44.213.187', '50.248.53.221']
+        ips = ['144.76.12.6']
+        # ips = ['37.44.213.187']
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"

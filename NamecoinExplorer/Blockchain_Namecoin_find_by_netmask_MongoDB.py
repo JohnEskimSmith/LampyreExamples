@@ -78,6 +78,26 @@ def return_massive_about_ips(ips, server, user, password, cidr):
             else:
                 yield _result
 
+    def return_info(search_dict, need_fields):
+        rows = db[collection_name_tx].find(search_dict, need_fields)
+        massive_all = [row for row in rows]
+
+        _need_block_fields = {'_id': 1, 'height': 1}
+        hashs_block = list(set([row['blockhash'] for row in massive_all]))
+        _search_filter = {"_id": {"$in": hashs_block}}
+        _tmp = db[collection_name_blocks].find(_search_filter, _need_block_fields)
+        _cache = {}
+        for row in _tmp:
+            if row['_id'] not in _cache:
+                _cache[row['_id']] = row['height']
+
+        for row in massive_all:
+            if row['blockhash'] in _cache:
+                row['height_block'] = _cache[row['blockhash']]
+            rows_for_table_lampyre = prepare_row(row)
+            for _row in rows_for_table_lampyre:
+                yield _row
+
     ip, port = server.split(":")
     dbname = "NamecoinExplorer"
     collection_name_blocks = "Blocks"
@@ -93,16 +113,18 @@ def return_massive_about_ips(ips, server, user, password, cidr):
                        'blockhash': 1,
                        'txid': 1,
                        '_id': 0}
-        rows = db[collection_name_tx].find(search_dict, need_fields)
-        for row in rows:
-            _block = {'_id': row['blockhash']}
-            _need_fields_block = {'height': 1, '_id': 0}
-            _tmp = db[collection_name_blocks].find_one(_block, _need_fields_block)
-            row['height_block'] = _tmp['height']
-            rows_for_table_lampyre = prepare_row(row)
-            if rows_for_table_lampyre:
-                for _row in rows_for_table_lampyre:
-                    yield _row
+        for row in return_info(search_dict, need_fields):
+            yield row
+        # rows = db[collection_name_tx].find(search_dict, need_fields)
+        # for row in rows:
+        #     _block = {'_id': row['blockhash']}
+        #     _need_fields_block = {'height': 1, '_id': 0}
+        #     _tmp = db[collection_name_blocks].find_one(_block, _need_fields_block)
+        #     row['height_block'] = _tmp['height']
+        #     rows_for_table_lampyre = prepare_row(row)
+        #     if rows_for_table_lampyre:
+        #         for _row in rows_for_table_lampyre:
+        #             yield _row
 
 
 def get_network(cidr: str):
@@ -234,7 +256,7 @@ class NamecoinHistoryNetblockMongoDB(Task):
         password = enter_params.passwordmongodb
 
         i = 1
-        group_count = 400
+        group_count = 1000
         result = []
         for cidr in netblock_enter_params:
             need_network = get_network(cidr)
@@ -262,7 +284,7 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        blocks = ['95.211.214.0/24','195.123.227.0/24']
+        blocks = ['95.211.214.0/24','195.123.227.0/24', '134.255.0.0/24']
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"

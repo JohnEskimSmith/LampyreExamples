@@ -65,14 +65,14 @@ def return_massive_about_domains(domains, server, user, password):
             _result = dict()
 
             _result['date_time'] = line['clean_datetime_block']
-            _result['domain'] = _name['domain']
-            _result['namecoin_domain'] = line['clean_name']
+            _result['domain'] = _name['domain'].strip()
+            _result['namecoin_domain'] = line['clean_name'].strip()
 
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
             try:
-                _result['operation'] =  line['clean_op']
+                _result['operation'] =  line['clean_op'].strip()
             except:
                 pass
             if 'ips' in line:
@@ -83,6 +83,25 @@ def return_massive_about_domains(domains, server, user, password):
             else:
                 yield _result
 
+    def return_info(search_dict, need_fields):
+        rows = db[collection_name_tx].find(search_dict, need_fields)
+        massive_all = [row for row in rows]
+
+        _need_block_fields = {'_id': 1, 'height': 1}
+        hashs_block = list(set([row['blockhash'] for row in massive_all]))
+        _search_filter = {"_id": {"$in": hashs_block}}
+        _tmp = db[collection_name_blocks].find(_search_filter, _need_block_fields)
+        _cache = {}
+        for row in _tmp:
+            if row['_id'] not in _cache:
+                _cache[row['_id']] = row['height']
+
+        for row in massive_all:
+            if row['blockhash'] in _cache:
+                row['height_block'] = _cache[row['blockhash']]
+            rows_for_table_lampyre = prepare_row(row)
+            for _row in rows_for_table_lampyre:
+                yield _row
 
     if ':' in server:
         ip, port = server.split(":")
@@ -107,15 +126,8 @@ def return_massive_about_domains(domains, server, user, password):
                        'blockhash': 1,
                        'txid': 1,
                        '_id': 0}
-        rows = db[collection_name_tx].find(search_dict, need_fields)
-
-        for row in rows:
-            _block = {'_id':row['blockhash']}
-            _need_fields_block = {'height': 1, '_id': 0}
-            _tmp = db[collection_name_blocks].find_one(_block, _need_fields_block)
-            row['height_block'] = _tmp['height']
-            for _row in prepare_row(row):
-                yield _row
+        for line in return_info(search_dict, need_fields):
+            yield line
 
 
 def return_namecoin(namedomain):
@@ -204,7 +216,7 @@ class NamecoinHistoryDomainIPMongoDB(Task):
         user = enter_params.usermongodb
         password = enter_params.passwordmongodb
 
-        domains = enter_params.domains
+        domains = set([d.strip().lower() for d in enter_params.domains])
 
         log_writer.info("Number of Namecoins:{}".format(len(domains)))
         result_lines = return_massive_about_domains(domains, server, user, password)
