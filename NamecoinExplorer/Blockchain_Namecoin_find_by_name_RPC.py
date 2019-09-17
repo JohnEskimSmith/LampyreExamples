@@ -5,7 +5,7 @@ import requests
 import json
 import ipaddress
 import re
-import collections
+from collections.abc import Iterable
 import datetime
 import concurrent.futures
 from requests.auth import HTTPBasicAuth
@@ -43,7 +43,7 @@ def not_empty(field: Field):
 
 def get_block_hashs(hashs, server, user, password):
     headers = {'content-type':'text/plain'}
-    if isinstance(hashs, collections.Iterable):
+    if isinstance(hashs, Iterable):
         v = hashs
     else:
         v = [hashs]
@@ -63,7 +63,7 @@ def get_block_hashs(hashs, server, user, password):
 
 def get_block_info(hashs, server, user, password):
     headers = {'content-type':'text/plain'}
-    if isinstance(hashs, collections.Iterable) and not isinstance(hashs, str):
+    if isinstance(hashs, Iterable) and not isinstance(hashs, str):
         v = hashs
     else:
         v = [hashs]
@@ -198,6 +198,7 @@ class NamecoinDomainExplorer(metaclass=Header):
     ip = Field('ip', ValueType.String)
     Netblock = Field('Netblock', ValueType.String)
     expired = Field('Status', ValueType.Boolean)
+    operation = Field('operation', ValueType.String)
     address = Field('address', ValueType.String)
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
@@ -230,7 +231,7 @@ class NamecoinHistoryDomainIPRPC(Task):
         return 'Explore Namecoin names(RPC server)'
 
     def get_category(self):
-        return "Blockchain:\tNamecoin"
+        return "Blockchain:\nNamecoin"
 
     def get_description(self):
         return 'Return history Namecoin name\n\nEnter parameters "d/example or example.bit'
@@ -258,12 +259,12 @@ class NamecoinHistoryDomainIPRPC(Task):
         ep_coll.add_enter_param('server', 'host with Namecoind(RPC-JSON)', ValueType.String, is_array=False, required=True,
                                 predefined_values=["http://68.183.0.119:8336"],
                                 default_value="http://68.183.0.119:8336")
-        ep_coll.add_enter_param('threads', 'Max threads', ValueType.Integer, is_array=False, required=True,
-                                predefined_values=[4,8], default_value=4)
         ep_coll.add_enter_param('userRPC', 'username for RPC', ValueType.String, is_array=False, required=True,
                                 default_value="user")
         ep_coll.add_enter_param('passwordRPC', 'password for RPC', ValueType.String, is_array=False, required=True,
                                 default_value="moscow")
+        ep_coll.add_enter_param('threads', 'Max threads', ValueType.Integer, is_array=False, required=True,
+                                predefined_values=[4, 8], default_value=4)
 
         return ep_coll
 

@@ -71,12 +71,17 @@ def return_massive_about_domains(domains, server, user, password):
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
-
+            try:
+                _result['operation'] =  line['clean_op']
+            except:
+                pass
             if 'ips' in line:
                 for ip in line['ips']:
                     _result_row = _result.copy()
                     _result_row['ip'] = ip.strip()
                     yield _result_row
+            else:
+                yield _result
 
 
     if ':' in server:
@@ -97,11 +102,13 @@ def return_massive_about_domains(domains, server, user, password):
         search_dict = {"clean_name":{"$in": search_list}}
         need_fields = {'clean_name': 1,
                        'ips': 1,
+                       'clean_op':1,
                         'clean_datetime_block': 1,
                        'blockhash': 1,
                        'txid': 1,
                        '_id': 0}
-        rows = db[collection_name_tx].find(search_dict, need_fields).sort('clean_datetime_block', 1)
+        rows = db[collection_name_tx].find(search_dict, need_fields)
+
         for row in rows:
             _block = {'_id':row['blockhash']}
             _need_fields_block = {'height': 1, '_id': 0}
@@ -126,6 +133,7 @@ class NamecoinDomainExplorer(metaclass=Header):
     ip = Field('ip', ValueType.String)
     Netblock = Field('Netblock', ValueType.String)
     expired = Field('Status', ValueType.Boolean)
+    operation = Field('operation', ValueType.String)
     address = Field('address', ValueType.String)
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
@@ -158,7 +166,7 @@ class NamecoinHistoryDomainIPMongoDB(Task):
         return 'Explore Namecoin names(MongoDB)'
 
     def get_category(self):
-        return "Blockchain:\tNamecoin"
+        return "Blockchain:\nNamecoin"
 
     def get_description(self):
         return 'Return history Namecoin name\n\nEnter parameters "d/example or example.bit'
@@ -201,7 +209,7 @@ class NamecoinHistoryDomainIPMongoDB(Task):
         log_writer.info("Number of Namecoins:{}".format(len(domains)))
         result_lines = return_massive_about_domains(domains, server, user, password)
         i = 1
-        for line in result_lines:
+        for line in sorted(result_lines,  key=lambda line: line['date_time']):
             log_writer.info('ready:{}.\t{}'.format(i, line['domain']))
             fields_table = NamecoinDomainExplorer.get_fields()
             tmp = NamecoinDomainExplorer.create_empty()
@@ -216,7 +224,8 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        domains = ['vizu000isw7tr1ocbju4.bit']
+        # domains = ['vizu000isw7tr1ocbju4.bit']
+        domains = ['zqwesxrdct.bit']
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"

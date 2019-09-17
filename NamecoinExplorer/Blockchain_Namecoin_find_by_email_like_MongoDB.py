@@ -66,6 +66,10 @@ def return_massive_about_emails_like(emails, limit, server, user, password):
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
+            try:
+                _result['operation'] = line['clean_op']
+            except:
+                pass
             for k in ['ips', 'emails']:
                 if k in line:
                     for el in line[k]:
@@ -94,6 +98,7 @@ def return_massive_about_emails_like(emails, limit, server, user, password):
                        'emails':1,
                         'clean_datetime_block': 1,
                        'blockhash': 1,
+                       'clean_op': 1,
                        'txid': 1,
                        '_id': 0}
 
@@ -102,7 +107,7 @@ def return_massive_about_emails_like(emails, limit, server, user, password):
         for email in emails:
             _tmp_dict = {'emails': {'$regex': f"{email}", '$options': 'i'}}
             search_dict['$or'].append(_tmp_dict)
-        rows = db[collection_name_tx].find(search_dict, need_fields).sort('clean_datetime_block', 1).limit(limit)
+        rows = db[collection_name_tx].find(search_dict, need_fields).limit(limit)
 
         for row in rows:
             _block = {'_id':row['blockhash']}
@@ -130,6 +135,7 @@ class NamecoinDomainExplorerEmail(metaclass=Header):
     ip = Field('ip', ValueType.String)
     Netblock = Field('Netblock', ValueType.String)
     expired = Field('Status', ValueType.Boolean)
+    operation = Field('operation', ValueType.String)
     address = Field('address', ValueType.String)
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
@@ -169,7 +175,7 @@ class NamecoinHistoryDomainIPLikeEmailMongoDB(Task):
         return 'Explore Namecoin names: emails(MongoDB)'
 
     def get_category(self):
-        return "Blockchain:\tNamecoin"
+        return "Blockchain:\nNamecoin"
 
     def get_description(self):
         return 'Return history Namecoin name with contact email address\n\nEnter parameters "gmail.com"\n\nAttention! Very slowly!'
@@ -209,7 +215,7 @@ class NamecoinHistoryDomainIPLikeEmailMongoDB(Task):
         log_writer.info("Number of string for search:{}".format(len(emails)))
         result_lines = return_massive_about_emails_like(emails, limit, server, user, password)
         i = 1
-        for line in result_lines:
+        for line in sorted(result_lines,  key=lambda line: line['date_time']):
             log_writer.info('ready:{}.\t{}'.format(i, line['domain']))
             fields_table = NamecoinDomainExplorerEmail.get_fields()
             tmp = NamecoinDomainExplorerEmail.create_empty()

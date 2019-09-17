@@ -66,7 +66,10 @@ def return_massive_about_domains_between_dates(start, stop, what_about_ip, serve
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
-
+            try:
+                _result['operation'] = line['clean_op']
+            except:
+                pass
             if what_about_ip:
                 for ip in line['ips']:
                     _result['ip'] = ip
@@ -92,6 +95,7 @@ def return_massive_about_domains_between_dates(start, stop, what_about_ip, serve
 
         need_fields = {'clean_name': 1,
                        'ips': 1,
+                       'clean_op':1,
                         'clean_datetime_block': 1,
                        'blockhash': 1,
                        'txid': 1,
@@ -130,6 +134,7 @@ class NamecoinDomainExplorer(metaclass=Header):
     ip = Field('ip', ValueType.String)
     Netblock = Field('Netblock', ValueType.String)
     expired = Field('Status', ValueType.Boolean)
+    operation = Field('operation', ValueType.String)
     address = Field('address', ValueType.String)
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
@@ -162,7 +167,7 @@ class NamecoinHistoryDomainIPDateMongoDB(Task):
         return 'Explore Namecoin for specific dates(MongoDB)'
 
     def get_category(self):
-        return "Blockchain:\tNamecoin"
+        return "Blockchain:\nNamecoin"
 
     def get_description(self):
         return 'Return history Namecoin names'
@@ -206,30 +211,32 @@ class NamecoinHistoryDomainIPDateMongoDB(Task):
         server = enter_params.server
         user = enter_params.usermongodb
         password = enter_params.passwordmongodb
-
-        sd = stop_date-start_date
-        boolean_ip = enter_params.check_ip
-        log_writer.info("searching:{} days".format(sd.days))
-        log_writer.info("from:{}, to:{}".format(start_date, stop_date))
-        result_lines = return_massive_about_domains_between_dates(start_date, stop_date, boolean_ip, server, user, password)
-        i = 1
-        for line in result_lines:
-            log_writer.info('ready:{}.\t{}'.format(i, line['domain']))
-            fields_table = NamecoinDomainExplorer.get_fields()
-            tmp = NamecoinDomainExplorer.create_empty()
-            for field in fields_table:
-                if field in line:
-                    tmp[fields_table[field]] = line[field]
-            result_writer.write_line(tmp, header_class=NamecoinDomainExplorer)
-            i += 1
+        if stop_date >= start_date:
+            sd = stop_date-start_date
+            boolean_ip = enter_params.check_ip
+            log_writer.info("searching:{} days".format(sd.days))
+            log_writer.info("from:{}, to:{}".format(start_date, stop_date))
+            result_lines = return_massive_about_domains_between_dates(start_date, stop_date, boolean_ip, server, user, password)
+            i = 1
+            for line in result_lines:
+                log_writer.info(f"ready:{i}.\t{line['domain']}")
+                fields_table = NamecoinDomainExplorer.get_fields()
+                tmp = NamecoinDomainExplorer.create_empty()
+                for field in fields_table:
+                    if field in line:
+                        tmp[fields_table[field]] = line[field]
+                result_writer.write_line(tmp, header_class=NamecoinDomainExplorer)
+                i += 1
+        else:
+            log_writer.info("errors with 'From' and 'To' dates")
 
 
 if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        start_date = datetime.strptime('2019-08-07', '%Y-%m-%d')
-        stop_date = datetime.strptime('2019-08-08', '%Y-%m-%d')
+        start_date = datetime.strptime('2019-08-19', '%Y-%m-%d')
+        stop_date = datetime.strptime('2019-08-20', '%Y-%m-%d')
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"

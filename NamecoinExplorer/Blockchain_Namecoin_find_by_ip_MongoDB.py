@@ -74,7 +74,10 @@ def return_massive_about_ips(ips, server, user, password):
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
-
+            try:
+                _result['operation'] = line['clean_op']
+            except:
+                pass
             if 'ips' in line:
                 for ip in line['ips']:
                     _result_row = _result.copy()
@@ -92,11 +95,12 @@ def return_massive_about_ips(ips, server, user, password):
         search_dict = {"ips": {"$in": ips_checked}}
         need_fields = {'clean_name': 1,
                        'ips': 1,
+                       'clean_op': 1,
                         'clean_datetime_block': 1,
                        'blockhash': 1,
                        'txid': 1,
                        '_id': 0}
-        rows = db[collection_name_tx].find(search_dict, need_fields).sort('clean_datetime_block', 1)
+        rows = db[collection_name_tx].find(search_dict, need_fields)
         for row in rows:
             _block = {'_id': row['blockhash']}
             _need_fields_block = {'height': 1, '_id': 0}
@@ -125,6 +129,7 @@ class NamecoinDomainExplorer(metaclass=Header):
     ip = Field('ip', ValueType.String)
     Netblock = Field('Netblock', ValueType.String)
     expired = Field('Status', ValueType.Boolean)
+    operation = Field('operation', ValueType.String)
     address = Field('address', ValueType.String)
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
@@ -157,7 +162,7 @@ class NamecoinHistoryIPDomainMongoDB(Task):
         return 'Explore Namecoin IP(MongoDB)'
 
     def get_category(self):
-        return "Blockchain:\tNamecoin"
+        return "Blockchain:\nNamecoin"
 
     def get_description(self):
         return 'Return history Namecoin IP\n\nEnter parameters "8.8.8.8'
@@ -201,7 +206,7 @@ class NamecoinHistoryIPDomainMongoDB(Task):
         log_writer.info("input ip-addresses:{}".format(len(ips)))
         result_lines = return_massive_about_ips(ips, server, user, password)
         i = 1
-        for line in result_lines:
+        for line in sorted(result_lines,  key=lambda line: line['date_time']):
             log_writer.info('ready:{}.\t{}'.format(i, line['domain']))
             fields_table = NamecoinDomainExplorer.get_fields()
             tmp = NamecoinDomainExplorer.create_empty()

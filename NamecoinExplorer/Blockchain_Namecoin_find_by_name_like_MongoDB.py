@@ -66,6 +66,10 @@ def return_massive_about_domains_like(domains, what_about_ip, limit, server, use
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
+            try:
+                _result['operation'] = line['clean_op']
+            except:
+                pass
             if what_about_ip:
                 if 'ips' in line:
                     for ip in line['ips']:
@@ -93,6 +97,7 @@ def return_massive_about_domains_like(domains, what_about_ip, limit, server, use
                        'ips': 1,
                        'clean_datetime_block': 1,
                        'blockhash': 1,
+                       'clean_op': 1,
                        'txid': 1,
                        '_id': 0}
 
@@ -101,7 +106,7 @@ def return_massive_about_domains_like(domains, what_about_ip, limit, server, use
         for domain in domains:
             _tmp_dict = {'clean_name': {'$regex': f"{domain}", '$options': 'i'}}
             search_dict['$or'].append(_tmp_dict)
-        rows = db[collection_name_tx].find(search_dict, need_fields).sort('clean_datetime_block', 1).limit(limit)
+        rows = db[collection_name_tx].find(search_dict, need_fields).limit(limit)
 
         for row in rows:
             _block = {'_id':row['blockhash']}
@@ -128,6 +133,7 @@ class NamecoinDomainExplorer(metaclass=Header):
     ip = Field('ip', ValueType.String)
     Netblock = Field('Netblock', ValueType.String)
     expired = Field('Status', ValueType.Boolean)
+    operation = Field('operation', ValueType.String)
     address = Field('address', ValueType.String)
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
@@ -160,7 +166,7 @@ class NamecoinHistoryDomainIPLikeMongoDB(Task):
         return 'Explore Namecoin names: like search(MongoDB)'
 
     def get_category(self):
-        return "Blockchain:\tNamecoin"
+        return "Blockchain:\nNamecoin"
 
     def get_description(self):
         return """Return history Namecoin name\n\nEnter parameters "d/mail-ru-stat-counter" or "stat-counter"\n\nAttention! Very slowly!"""
@@ -201,7 +207,7 @@ class NamecoinHistoryDomainIPLikeMongoDB(Task):
         log_writer.info("Number of string for search:{}".format(len(domains)))
         result_lines = return_massive_about_domains_like(domains, boolean_ip, limit, server, user, password)
         i = 1
-        for line in result_lines:
+        for line in sorted(result_lines,  key=lambda line: line['date_time']):
             log_writer.info('ready:{}.\t{}'.format(i, line['domain']))
             fields_table = NamecoinDomainExplorer.get_fields()
             tmp = NamecoinDomainExplorer.create_empty()
