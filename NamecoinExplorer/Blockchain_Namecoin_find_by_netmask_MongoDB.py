@@ -51,7 +51,7 @@ def not_empty(field: Field):
     return Condition(field, Operations.NotEqual, '')
 
 
-def return_massive_about_ips(ips, server, user, password):
+def return_massive_about_ips(ips, server, user, password, cidr):
 
     def prepare_row(line):
         _name = return_namecoin(line['clean_name'])
@@ -65,12 +65,18 @@ def return_massive_about_ips(ips, server, user, password):
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
-
+            try:
+                _result['operation'] = line['clean_op']
+            except:
+                pass
             if 'ips' in line:
                 for ip in line['ips']:
                     _result_row = _result.copy()
                     _result_row['ip'] = ip.strip()
+                    _result_row['Netblock'] = cidr
                     yield _result_row
+            else:
+                yield _result
 
     ip, port = server.split(":")
     dbname = "NamecoinExplorer"
@@ -82,11 +88,12 @@ def return_massive_about_ips(ips, server, user, password):
         search_dict = {"ips": {"$in": ips}}
         need_fields = {'clean_name': 1,
                        'ips': 1,
+                       'clean_op': 1,
                         'clean_datetime_block': 1,
                        'blockhash': 1,
                        'txid': 1,
                        '_id': 0}
-        rows = db[collection_name_tx].find(search_dict, need_fields).sort('clean_datetime_block', 1)
+        rows = db[collection_name_tx].find(search_dict, need_fields)
         for row in rows:
             _block = {'_id': row['blockhash']}
             _need_fields_block = {'height': 1, '_id': 0}
@@ -143,6 +150,7 @@ class NamecoinDomainExplorer(metaclass=Header):
     ip = Field('ip', ValueType.String)
     Netblock = Field('Netblock', ValueType.String)
     expired = Field('Status', ValueType.Boolean)
+    operation = Field('operation', ValueType.String)
     address = Field('address', ValueType.String)
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
@@ -164,7 +172,8 @@ class NamecoinDomainIPBlock(metaclass=Schema):
     Block = Netblock.schematic(Header)
 
 
-    Connection = IPToNetblock.between(SchemaIP, Block, {}, [Condition(Header.ip, Operations.NotEqual, '')])
+    Connection = IPToNetblock.between(SchemaIP, Block, {}, [Condition(Header.ip, Operations.NotEqual, ''),
+                                                            Condition(Header.Netblock, Operations.NotEqual, '')])
 
     SchemaIPToDomain = IPToDomain.between(
         SchemaIP, SchemaDomain,
@@ -185,7 +194,7 @@ class NamecoinHistoryNetblockMongoDB(Task):
         return 'Explore Namecoin Netblock(MongoDB)'
 
     def get_category(self):
-        return "Blockchain:\tNamecoin"
+        return "Blockchain:\nNamecoin"
 
     def get_description(self):
         return 'Return history Namecoin Netblock\n\nEnter parameters 195.123.245.0/24'
@@ -226,25 +235,27 @@ class NamecoinHistoryNetblockMongoDB(Task):
 
         i = 1
         group_count = 400
+        result = []
         for cidr in netblock_enter_params:
             need_network = get_network(cidr)
             if need_network:
                 blocks_ips = grouper(group_count, map(str, need_network))
                 for ips in blocks_ips:
                     # return all document
-                    _result_lines = return_massive_about_ips(ips, server, user, password)
+                    _result_lines = return_massive_about_ips(ips, server, user, password, cidr)
                     check_ip_cidr = lambda row: ipaddress.ip_address(row['ip']) in need_network
                     result_lines = filter(check_ip_cidr, _result_lines)
-                    for line in result_lines:
-                        log_writer.info('ready:{}.\t{}'.format(i, line['domain']))
-                        fields_table = NamecoinDomainExplorer.get_fields()
-                        tmp = NamecoinDomainExplorer.create_empty()
-                        for field in fields_table:
-                            if field in line:
-                                tmp[fields_table[field]] = line[field]
-                        tmp[fields_table['Netblock']] = cidr
-                        result_writer.write_line(tmp, header_class=NamecoinDomainExplorer)
-                        i += 1
+                    result.extend(list(result_lines))
+                log_writer.info('ready:{}.\t{}'.format(i, cidr))
+                i += 1
+        for line in sorted(result,  key=lambda line: line['date_time']):
+            fields_table = NamecoinDomainExplorer.get_fields()
+            tmp = NamecoinDomainExplorer.create_empty()
+            for field in fields_table:
+                if field in line:
+                    tmp[fields_table[field]] = line[field]
+            result_writer.write_line(tmp, header_class=NamecoinDomainExplorer)
+
 
 
 if __name__ == '__main__':
