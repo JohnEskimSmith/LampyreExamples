@@ -9,8 +9,8 @@ from datetime import timedelta, datetime
 try:
     from ontology import (
         Task, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
-        MacroCollection, Schema, EnterParamCollection, RelativeDate, ReferencePoint, SchemaCollection, GraphMappingFlags, BinaryType, Constants,
-        Attributes, IP, Domain, IPToDomain)
+        MacroCollection, Schema, EnterParamCollection, RelativeDate, ReferencePoint, SchemaCollection, GraphMappingFlags,
+        BinaryType, Constants, Attributes, IP, Domain, IPToDomain)
 
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
@@ -39,13 +39,11 @@ def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
             client.server_info()
             check = True
         except Exception as ex:
-            print(f"try {check_i}, connecting - error, sleep - 1 sec.")
+            print(f"try {check_i}, error:'{str(ex)}' connecting - error, sleep - 1 sec.")
             time.sleep(sleep_sec)
             check_i += 1
-    if check:
-        mongoclient = client
-        return mongoclient
-
+        else:
+            return client
 
 
 def not_empty(field: Field):
@@ -244,8 +242,8 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        start_date = datetime.strptime('2019-08-19', '%Y-%m-%d')
-        stop_date = datetime.strptime('2019-08-20', '%Y-%m-%d')
+        start_date = datetime.strptime('2019-09-21', '%Y-%m-%d')
+        stop_date = datetime.strptime('2019-09-22', '%Y-%m-%d')
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"

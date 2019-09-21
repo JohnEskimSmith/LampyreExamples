@@ -38,12 +38,11 @@ def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
             client.server_info()
             check = True
         except Exception as ex:
-            print(f"try {check_i}, connecting - error, sleep - {sleep_sec} sec.")
+            print(f"try {check_i}, error:'{str(ex)}', connecting - error, sleep - 1 sec.")
             time.sleep(sleep_sec)
             check_i += 1
-    if check:
-        mongoclient = client
-        return mongoclient
+        else:
+            return client
 
 
 def not_empty(field: Field):
@@ -236,8 +235,8 @@ if __name__ == '__main__':
 
     class EnterParamsFake:
         # ips = ['185.82.218.112']
-        # ips = ['132.148.40.220', '185.126.202.186', '37.44.213.187', '50.248.53.221']
-        ips = ['144.76.12.6']
+        ips = ['132.148.40.220', '185.126.202.186', '37.44.213.187', '50.248.53.221']
+        # ips = ['144.76.12.6']
         # ips = ['37.44.213.187']
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"

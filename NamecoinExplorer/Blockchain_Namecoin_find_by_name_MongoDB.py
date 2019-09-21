@@ -29,9 +29,9 @@ def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
     :return: True, if connected, and set value mongoclient - MongoClient
     """
     if username and password:
-        connect_string_to = 'mongodb://{}:{}@{}:{}/{}'.format(username, password, ip, port, dbname)
+        connect_string_to = f'mongodb://{username}:{password}@{ip}:{port}/{dbname}'
     else:
-        connect_string_to = 'mongodb://{}:{}/{}'.format(ip, port, dbname)
+        connect_string_to = f'mongodb://{ip}:{port}/{dbname}'
 
     check = False
     count_repeat = 4
@@ -44,13 +44,11 @@ def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
             client.server_info()
             check = True
         except Exception as ex:
-            print(f"try {check_i}, connecting - error, sleep - {sleep_sec} sec.")
+            print(f"try {check_i}, error:'{str(ex)}' connecting - error, sleep - 1 sec.")
             time.sleep(sleep_sec)
             check_i += 1
-    if check:
-        mongoclient = client
-        return mongoclient
-
+        else:
+            return client
 
 
 def not_empty(field: Field):
@@ -132,9 +130,9 @@ def return_massive_about_domains(domains, server, user, password):
 
 def return_namecoin(namedomain):
     if namedomain.endswith(".bit"):
-        return {'domain':namedomain, 'namecoin_domain': f"d/{namedomain[:-4]}"}
+        return {'domain': namedomain, 'namecoin_domain': f"d/{namedomain[:-4]}"}
     elif namedomain.startswith('d/'):
-        return {'domain':namedomain[2:]+'.bit', 'namecoin_domain':namedomain}
+        return {'domain': namedomain[2:]+'.bit', 'namecoin_domain': namedomain}
 
 
 class NamecoinDomainExplorer(metaclass=Header):

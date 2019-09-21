@@ -39,12 +39,11 @@ def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
             client.server_info()
             check = True
         except Exception as ex:
-            print(f"try {check_i}, connecting - error, sleep - {sleep_sec} sec.")
+            print(f"try {check_i}, error:'{str(ex)}', connecting - error, sleep - 1 sec.")
             time.sleep(sleep_sec)
             check_i += 1
-    if check:
-        mongoclient = client
-        return mongoclient
+        else:
+            return client
 
 
 def not_empty(field: Field):
@@ -115,16 +114,6 @@ def return_massive_about_ips(ips, server, user, password, cidr):
                        '_id': 0}
         for row in return_info(search_dict, need_fields):
             yield row
-        # rows = db[collection_name_tx].find(search_dict, need_fields)
-        # for row in rows:
-        #     _block = {'_id': row['blockhash']}
-        #     _need_fields_block = {'height': 1, '_id': 0}
-        #     _tmp = db[collection_name_blocks].find_one(_block, _need_fields_block)
-        #     row['height_block'] = _tmp['height']
-        #     rows_for_table_lampyre = prepare_row(row)
-        #     if rows_for_table_lampyre:
-        #         for _row in rows_for_table_lampyre:
-        #             yield _row
 
 
 def get_network(cidr: str):
@@ -226,7 +215,6 @@ class NamecoinHistoryNetblockMongoDB(Task):
 
     def get_headers(self):
         return HeaderCollection(NamecoinDomainExplorer)
-
 
     def get_schemas(self):
         return SchemaCollection(NamecoinDomainIPBlock)

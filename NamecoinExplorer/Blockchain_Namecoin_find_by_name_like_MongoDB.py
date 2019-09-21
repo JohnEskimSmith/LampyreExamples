@@ -38,13 +38,11 @@ def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
             client.server_info()
             check = True
         except Exception as ex:
-            print(f"try {check_i}, connecting - error, sleep - 1 sec.")
+            print(f"try {check_i}, error:'{str(ex)}' connecting - error, sleep - 1 sec.")
             time.sleep(sleep_sec)
             check_i += 1
-    if check:
-        mongoclient = client
-        return mongoclient
-
+        else:
+            return client
 
 
 def not_empty(field: Field):
@@ -54,8 +52,8 @@ def not_empty(field: Field):
 def return_massive_about_domains_like(domains, what_about_ip, limit, server, user, password):
 
     def prepare_row(line):
-
-        _name = return_namecoin(line['clean_name']) # very controversial option, will be searching only d/example
+        # very controversial option, will be searching only d/example
+        _name = return_namecoin(line['clean_name'])
         if _name:
             _result = dict()
 
@@ -84,13 +82,13 @@ def return_massive_about_domains_like(domains, what_about_ip, limit, server, use
                     _result['ip'] = ''
                     yield _result
 
-    def return_info(search_dict, need_fields, limit = None):
+    def return_info(search_dict, need_fields, limit=None):
         if not limit:
             rows = db[collection_name_tx].find(search_dict, need_fields).limit(limit)
         else:
             rows = db[collection_name_tx].find(search_dict, need_fields)
 
-        massive_all = [row for row in rows]
+        massive_all = list(rows)
 
         _need_block_fields = {'_id': 1, 'height': 1}
         hashs_block = list(set([row['blockhash'] for row in massive_all]))
@@ -136,7 +134,7 @@ def return_massive_about_domains_like(domains, what_about_ip, limit, server, use
 
 def return_namecoin(namedomain):
     if namedomain.endswith(".bit"):
-        return {'domain':namedomain, 'namecoin_domain': f"d/{namedomain[:-4]}"}
+        return {'domain': namedomain, 'namecoin_domain': f"d/{namedomain[:-4]}"}
     elif namedomain.startswith('d/'):
         return {'domain':namedomain[2:]+'.bit', 'namecoin_domain':namedomain}
 

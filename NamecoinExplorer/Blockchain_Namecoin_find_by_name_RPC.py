@@ -57,12 +57,11 @@ def get_block_hashs(hashs, server, user, password):
         server, data=json.dumps(payload), headers=headers, auth=HTTPBasicAuth(user, password))
     if response.ok:
         data = response.json()
-        if 'result' in data:
-            return data['result']
+        return data.get('result')
 
 
 def get_block_info(hashs, server, user, password):
-    headers = {'content-type':'text/plain'}
+    headers = {'content-type': 'text/plain'}
     if isinstance(hashs, Iterable) and not isinstance(hashs, str):
         v = hashs
     else:
@@ -80,22 +79,20 @@ def get_block_info(hashs, server, user, password):
 
     if response.ok:
         data = response.json()
-
-        if 'result' in data:
-            return data['result']
+        return data.get('result')
 
 
 def name_history_one(domain, value, server, user, password):
 
     def parse_record(row):
-        tmp_result = {"domain":domain}
+        tmp_result = {"domain": domain}
         tmp_result['ips'] = []
-        if 'name' in row.keys():
+        if 'name' in row:
             tmp_result['namecoin_domain'] = row['name']
-        if 'value' in row.keys():
+        if 'value' in row:
             try:
-                v = json.loads(row['value'].replace('\n',' ').replace('\t',' '))
-                if 'ip' in v.keys():
+                v = json.loads(row['value'].replace('\n', ' ').replace('\t', ' '))
+                if 'ip' in v:
                     if isinstance(v['ip'], list):
                         for ip in v['ip']:
                             tmp_result['ips'].append(ip)
@@ -109,24 +106,25 @@ def name_history_one(domain, value, server, user, password):
             except:
                 ips = return_ip(row['value'])
                 tmp_result['ips'].extend(ips)
-        if 'txid' in row.keys():
+        if 'txid' in row:
             tmp_result['txid'] = row['txid']
         _keys = ['address', 'height', 'expired', 'expires_in']
         for k in _keys:
-            if k in row.keys():
+            if k in row:
                 tmp_result[k] = row[k]
-        if 'expired' in tmp_result.keys():
+        if 'expired' in tmp_result:
             tmp_result['expired'] = not tmp_result['expired']
         timeblock = None
         hash_block = None
         if 'height' in tmp_result:
             h = get_block_hashs(tmp_result['height'], server, user, password)
             info = get_block_info(h, server, user, password)
-            try:
-                timeblock = datetime.datetime.utcfromtimestamp(info['time'])
-                hash_block = info['hash']
-            except:
-                pass
+            if info:
+                try:
+                    timeblock = datetime.datetime.utcfromtimestamp(info['time'])
+                    hash_block = info['hash']
+                except:
+                    pass
         tmp_result['date_time'] = timeblock
         tmp_result['hash_block'] = hash_block
         return tmp_result
@@ -147,12 +145,10 @@ def name_history_one(domain, value, server, user, password):
     except Exception as e:
         check = False
         data = None
-        data_errors = str(e)
-        print(data_errors)
-
+        print(f"errors:'{str(e)}'")
     if check and data:
         try:
-            if 'result' in data:
+            if isinstance(data.get('result'), Iterable):
                 for block in data['result']:
                     _tmp_row = parse_record(block)
                     row = _tmp_row.copy()
@@ -163,14 +159,14 @@ def name_history_one(domain, value, server, user, password):
         except:
             print('high level errors...')
     else:
-        print('errors with service...:{}, {}'.format(check, data))
+        print(f'errors with service...:{check}, {data}')
 
 
 def return_namecoin(namedomain):
     if namedomain.endswith(".bit"):
-        return {'domain':namedomain, 'namecoin_domain': f"d/{namedomain[:-4]}"}
+        return {'domain': namedomain, 'namecoin_domain': f"d/{namedomain[:-4]}"}
     elif namedomain.startswith('d/'):
-        return {'domain':namedomain[2:]+'.bit', 'namecoin_domain':namedomain}
+        return {'domain': namedomain[2:]+'.bit', 'namecoin_domain': namedomain}
 
 
 def return_massive_about_domains(domains, server, threads, lg, user, password):
