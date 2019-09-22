@@ -19,6 +19,7 @@ import concurrent.futures
 from random import choice
 from time import sleep
 import datetime
+from sys import exit
 
 def grouper(count, iterable, fillvalue=None):
     """
@@ -36,7 +37,7 @@ def grouper(count, iterable, fillvalue=None):
     return result
 
 
-def get_main_indexs():
+def get_main_indexs(lgw):
     """
     simple return json from index.commoncrawl.org with set of data
     :return:
@@ -45,16 +46,15 @@ def get_main_indexs():
     try:
         req = requests.get(main_url_json)
         status = req.status_code
-    except:
-        status = False
-    if not(status and status == 200):
-        return False
+    except Exception as ex:
+        lgw.error(f'something went wrong...:{str(ex)}')
     else:
-        try:
-            indexs = [el['cdx-api'] for el in req.json()]
-            return indexs
-        except:
-            return False
+        if status == 200:
+            try:
+                indexs = [el['cdx-api'] for el in req.json()]
+                return indexs
+            except Exception as ex:
+                lgw.error(f'something went wrong...:{str(ex)}')
 
 
 def create_commoncrawl_urls(commoncrawl_indexs, domains):
@@ -193,7 +193,7 @@ def return_info_from_block_url(block_dict_domains, log_writer):
 
     union_result = []
     for one_record in block_dict_domains:
-        # region pause
+        # region pause - "magic method"
         times_for_sleep = choice([i * 0.5 for i in range(1, 10)] * 4)
         sleep(times_for_sleep)
         # pause
@@ -201,30 +201,7 @@ def return_info_from_block_url(block_dict_domains, log_writer):
         raw_row = return_info_from_one_record(one_record, session_request)
         if raw_row:
             union_result.append(raw_row)
-
-
     return union_result
-
-
-class TableSubDomains(metaclass=Header):
-    """
-    table 1 for Lampyre
-    """
-    display_name = 'Domains(subdomains)'
-    DateTimeField = Field('Date', ValueType.Datetime)
-    search_domain = Field("Search domain", ValueType.String)
-    subdomain = Field("Subdomain", ValueType.String)
-    crawl_index = Field('CommonCrawl index', ValueType.String)
-    url_crawl_index = Field('URL (CommonCrawl index)', ValueType.String)
-
-
-class TableUniqueSubDomains(metaclass=Header):
-    """
-    table 2 for Lampyre
-    """
-    display_name = 'Unique Domains(subdomains)'
-    search_domain = Field("Search domain", ValueType.String)
-    subdomain = Field("Subdomain", ValueType.String)
 
 
 def prepare_table(rawtable):
@@ -272,11 +249,62 @@ def thread_async_by_page(requests_domains, threads, lgw):
                         result_table.append(row)
     return result_table
 
+
+def not_empty(field: Field):
+    return Condition(field, Operations.NotEqual, '')
+
+
 class DomainToDomainWithDate(metaclass=Link):
     name = Utils.make_link_name(Domain, Domain) + ' timeline'
     DateTime = Attributes.System.Datetime
     Begin = Domain
     End = Domain
+
+
+class TableSubDomains(metaclass=Header):
+    """
+    table 1 for Lampyre
+    """
+    display_name = 'Domains(subdomains)'
+    DateTimeField = Field('Date', ValueType.Datetime)
+    search_domain = Field("Search domain", ValueType.String)
+    subdomain = Field("Subdomain", ValueType.String)
+    crawl_index = Field('CommonCrawl index', ValueType.String)
+    url_crawl_index = Field('URL (CommonCrawl index)', ValueType.String)
+
+
+class TableUniqueSubDomains(metaclass=Header):
+    """
+    table 2 for Lampyre
+    """
+    display_name = 'Unique Domains(subdomains)'
+    search_domain = Field("Search domain", ValueType.String)
+    subdomain = Field("Subdomain", ValueType.String)
+
+
+class DomainToSubDomainDate(metaclass=Schema):
+    name = 'Domains, Subdomains:timeline'
+    Header = TableSubDomains
+
+    SchemaDomain = SchemaObject(Domain, mapping={Domain.Domain: Header.search_domain})
+    SchemaSubDomain = SchemaObject(Domain, mapping={Domain.Domain: Header.subdomain})
+
+    SchemaDomainToDomain = DomainToDomainWithDate.between(
+        SchemaDomain, SchemaSubDomain,
+        mapping={DomainToDomainWithDate.DateTime: Header.DateTimeField},
+        conditions=[not_empty(Header.search_domain), not_empty(Header.subdomain)])
+
+class DomainToSubDomainUniq(metaclass=Schema):
+    name = 'Domains, Subdomains'
+    Header = TableUniqueSubDomains
+
+    SchemaDomain = SchemaObject(Domain, mapping={Domain.Domain: Header.search_domain})
+    SchemaSubDomain = SchemaObject(Domain, mapping={Domain.Domain: Header.subdomain})
+
+    SchemaDomainToDomain = DomainToDomain.between(
+        SchemaDomain, SchemaSubDomain,
+        mapping={DomainToDomain.RelationType: Header.search_domain},
+        conditions=[not_empty(Header.search_domain), not_empty(Header.subdomain)])
 
 class CommonCrawlDataSetSubdomainExtracter(Task):
 
@@ -300,7 +328,12 @@ class CommonCrawlDataSetSubdomainExtracter(Task):
         return 'domains'
 
     def get_headers(self):
-        return HeaderCollection(TableSubDomains, TableUniqueSubDomains)
+        htable = TableSubDomains
+        htable.set_property(TableSubDomains.crawl_index.system_name, 'hidden', True)
+        return HeaderCollection(htable, TableUniqueSubDomains)
+
+    def get_schemas(self):
+        return SchemaCollection(DomainToSubDomainDate, DomainToSubDomainUniq)
 
     def get_enter_params(self):
         ep_coll = EnterParamCollection()
@@ -312,15 +345,21 @@ class CommonCrawlDataSetSubdomainExtracter(Task):
 
     def execute(self, enter_params, result_writer, log_writer, temp_dir=None):
         domains = set([domain.lower().strip() for domain in enter_params.domains])
-        commoncrawl_indexs = get_main_indexs()
+        commoncrawl_indexs = get_main_indexs(lgw=log_writer)
+        if not commoncrawl_indexs:
+            log_writer.error('unable to get data from https://index.commoncrawl.org')
+            exit(1)
         max_threads = enter_params.c_threads
         request_urls = create_commoncrawl_urls(commoncrawl_indexs, domains)
 
         results = thread_async_by_page(request_urls, threads=max_threads, lgw=log_writer)
         cache_for_table_2 = []
+
         fields_table_1 = TableSubDomains.get_fields()
+        for line in sorted(results,  key=lambda line: line[fields_table_1['DateTimeField']]):
+            result_writer.write_line(line, header_class=TableSubDomains)
+
         for row_table in results:
-            result_writer.write_line(row_table, header_class=TableSubDomains)
             search_domain = row_table[fields_table_1['search_domain']]
             sub_domain = row_table[fields_table_1['subdomain']]
             fields_table_2 = TableUniqueSubDomains.get_fields()
@@ -331,12 +370,13 @@ class CommonCrawlDataSetSubdomainExtracter(Task):
                 result_writer.write_line(_tmp, header_class=TableUniqueSubDomains)
                 cache_for_table_2.append(''.join([search_domain, sub_domain]))
 
+
 # region Debugging
 if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        domains = ['defcon.org']
+        domains = ['group-ib.ru']
         c_threads = 32
 
     class WriterFake:
