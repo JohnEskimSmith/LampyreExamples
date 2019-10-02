@@ -21,6 +21,7 @@ from time import sleep
 import datetime
 from sys import exit
 
+
 def grouper(count, iterable, fillvalue=None):
     """
     :param count: length of subblock
@@ -64,7 +65,7 @@ def create_commoncrawl_urls(commoncrawl_indexs, domains):
     :param domains: what are we going to look for subdomains
     :return: list of dicts wiht urls
     """
-    page_size = str(2000)
+    page_size = str(4000)
     need_urls = []
     if commoncrawl_indexs:
         template = "{}?url={}&fl=url&matchType=domain&pageSize={}&output=json"
