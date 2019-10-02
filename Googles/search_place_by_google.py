@@ -59,56 +59,89 @@ def text_search_google_place(text, api, logger, length_geo=6, delay=5):
     sleep_before_geturl(get_random_sec(msec))
 
     logger.info("try search about - '{}'".format(text))
-    base_url_get_textsearch_place = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query={textsearch}&key={key_search}'
+    get_url_text = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
     textsearch = text.replace(' ', '+')
-    try:
-        need_url = base_url_get_textsearch_place.format(textsearch=textsearch, key_search=api)
-        page = requests.get(need_url, timeout=delay)
-        jsonRaw = page.json()
-        status_code = page.status_code
-        logger.info(', '.join([text.strip(), str(status_code)]))
-    except:
-        logger.info('exception in get data...')
-    else:
-        if status_code == 200:
-            if jsonRaw['status'] != 'ZERO_RESULTS':
-                    _return_results = []
-                    return_keys = ['formatted_address', 'name_address',
-                                   'lat', 'lon', 'geohash', 'photo_data',
-                                   'search_text']
-                    for row in jsonRaw['results']:
-                        _tmp = dict.fromkeys(return_keys)
-                        if 'formatted_address' in row.keys():
-                            _tmp['formatted_address'] = row['formatted_address']
-                        else:
-                            _tmp['formatted_address'] = ''
-                        if 'name' in row.keys():
-                            _tmp['name_address'] = row['name']
-                        else:
-                            _tmp['name_address'] = ''
+    check = True
+    mypagetoken = None
+    _big_set = []
+    need_try = False
+    session_request = requests.Session()
+    while check:
 
-                        _tmp['lat'] = row['geometry']['location']['lat']
-                        _tmp['lon'] = row['geometry']['location']['lng']
-                        _tmp['geohash'] = pgh.encode(_tmp['lat'],_tmp['lon'], precision=length_geo)
-                        _tmp['search_text'] = text
-                        if 'photos' not in row:
-                            _tmp['photo_data'] = ''
-                            _return_results.append(_tmp)
-                        else:
-                            for _photo in row['photos']:
-                                height = _photo['height']
-                                width = _photo['width']
-                                if width > 500:
-                                    width = 300
-                                photo_reference = get_photo_google(width, _photo['photo_reference'], api)
-                                if not photo_reference:
-                                    photo_reference = ''
-                                z = {'photo_data': photo_reference}
-                                _tmp.update(z)
-                                _return_results.append(_tmp)
-                    return _return_results
+        try:
+            params = {}
+            if not mypagetoken:
+                params['query'] = textsearch
+            else:
+                params['pagetoken'] = mypagetoken
+                sleep_before_geturl(3)
+
+            params['key'] = api
+            page = session_request.get(get_url_text, params=params, timeout=delay)
+            jsonRaw = page.json()
+            status_code = page.status_code
+            logger.info(', '.join([text.strip(), str(status_code)]))
+        except:
+            logger.info('exception in get data...')
+            check = False
         else:
-            logger.info('errors with status code: '.format(str(status_code)))
+            if status_code == 200:
+                if jsonRaw['status'] == 'OK':
+                    _big_set.append(jsonRaw)
+                elif jsonRaw['status'] == 'ZERO_RESULTS':
+                    check = False
+                elif jsonRaw['status'] == 'INVALID_REQUEST':
+                    need_try = True
+                if 'next_page_token' in jsonRaw:
+                    mypagetoken = jsonRaw['next_page_token']
+                elif need_try:
+                    check = True
+                else:
+                    check = False
+            else:
+                check = False
+                logger.info('errors with status code: '.format(str(status_code)))
+
+    if len(_big_set) > 0:
+        _return_results = []
+        for block in _big_set:
+
+            if block['status'] != 'ZERO_RESULTS':
+                return_keys = ['formatted_address', 'name_address',
+                               'lat', 'lon', 'geohash', 'photo_data',
+                               'search_text']
+                for row in block['results']:
+                    _tmp = dict.fromkeys(return_keys)
+                    if 'formatted_address' in row.keys():
+                        _tmp['formatted_address'] = row['formatted_address']
+                    else:
+                        _tmp['formatted_address'] = ''
+                    if 'name' in row.keys():
+                        _tmp['name_address'] = row['name']
+                    else:
+                        _tmp['name_address'] = ''
+
+                    _tmp['lat'] = row['geometry']['location']['lat']
+                    _tmp['lon'] = row['geometry']['location']['lng']
+                    _tmp['geohash'] = pgh.encode(_tmp['lat'],_tmp['lon'], precision=length_geo)
+                    _tmp['search_text'] = text
+                    if 'photos' not in row:
+                        _tmp['photo_data'] = ''
+                        _return_results.append(_tmp)
+                    else:
+                        for _photo in row['photos']:
+                            height = _photo['height']
+                            width = _photo['width']
+                            if width > 500:
+                                width = 300
+                            photo_reference = get_photo_google(width, _photo['photo_reference'], api)
+                            if not photo_reference:
+                                photo_reference = ''
+                            z = {'photo_data': photo_reference}
+                            _tmp.update(z)
+                            _return_results.append(_tmp)
+        if len(_return_results) > 0:
+            return _return_results
 
 
 def thread_async_(texts, threads, length_geo, logger):
@@ -198,7 +231,7 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        texts = ['United Nations USA']
+        texts = ['Управление ФСБ РФ по Удмуртской Республике']
         length_geo = 6
 
 
