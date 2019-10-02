@@ -231,7 +231,7 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        texts = ['Управление ФСБ РФ по Удмуртской Республике']
+        texts = ['United Nations USA']
         length_geo = 6
 
 
