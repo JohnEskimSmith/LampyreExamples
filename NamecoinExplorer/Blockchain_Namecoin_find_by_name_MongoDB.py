@@ -1,12 +1,6 @@
 # -*- coding: utf8 -*-
 __author__ = 'sai'
 
-import requests
-import json
-import ipaddress
-import re
-import collections
-import datetime
 import time
 from pymongo import MongoClient
 
