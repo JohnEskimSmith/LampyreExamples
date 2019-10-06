@@ -8,7 +8,7 @@ from datetime import timedelta, datetime
 
 try:
     from ontology import (
-        Task, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
+        Object, Task, Link, Attribute, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
         MacroCollection, Schema, EnterParamCollection, RelativeDate, ReferencePoint, SchemaCollection, GraphMappingFlags,
         BinaryType, Constants, Attributes, IP, Domain, IPToDomain)
 
@@ -64,6 +64,7 @@ def return_massive_about_domains_between_dates(start, stop, what_about_ip, serve
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
+            _result['short_txid'] = line['txid'][:9]
             try:
                 _result['operation'] =  line['clean_op'].strip()
             except:
@@ -146,6 +147,30 @@ class NamecoinDomainExplorer(metaclass=Header):
     height = Field('height', ValueType.Integer)
     hash_block = Field('hash_block', ValueType.String)
     txid = Field('txid', ValueType.String)
+    short_txid = Field('Short txid(8)', ValueType.String)
+
+
+class NamecoinTXid(metaclass=Object):
+    name = "Namecoin transaction"
+    txid = Attribute("Transaction id", ValueType.String)
+    txid_short = Attribute("Transaction id (short)", ValueType.String)
+    IdentAttrs = [txid]
+    CaptionAttrs = [txid_short]
+    Image = Utils.base64string("C:\habr\objects\TX.png")
+
+
+class NamecoinTXidToDomain(metaclass=Link):
+    name = Utils.make_link_name(NamecoinTXid, Domain)
+    DateTime = Attributes.System.Datetime
+    Begin = NamecoinTXid
+    End = Domain
+
+
+class NamecoinTXidToIP(metaclass=Link):
+    name = Utils.make_link_name(NamecoinTXid, IP)
+    DateTime = Attributes.System.Datetime
+    Begin = NamecoinTXid
+    End = IP
 
 
 class NamecoinDomainIP(metaclass=Schema):
@@ -159,6 +184,31 @@ class NamecoinDomainIP(metaclass=Schema):
         SchemaIP, SchemaDomain,
         mapping={IPToDomain.Resolved: Header.date_time},
         conditions=[not_empty(Header.domain), not_empty(Header.ip)])
+
+
+class NamecoinDomainExtended(metaclass=Schema):
+    name = 'Namecoin schema: Extended schema interpretation'
+    Header = NamecoinDomainExplorer
+
+    SchemaIP = SchemaObject(IP, mapping={IP.IP: Header.ip})
+    SchemaDomain = SchemaObject(Domain, mapping={Domain.Domain: Header.domain})
+    SchemaTxid = SchemaObject(NamecoinTXid, mapping={NamecoinTXid.txid: Header.txid,
+                                                     NamecoinTXid.txid_short: Header.short_txid})
+
+    SchemaIPToDomain = IPToDomain.between(
+        SchemaIP, SchemaDomain,
+        mapping={IPToDomain.Resolved: Header.date_time},
+        conditions=[not_empty(Header.domain), not_empty(Header.ip)])
+
+    SchemaTxidToDomain = NamecoinTXidToDomain.between(
+        SchemaTxid, SchemaDomain,
+        mapping={NamecoinTXidToDomain.DateTime: Header.date_time},
+        conditions=[not_empty(Header.domain)])
+
+    SchemaTxidToIP = NamecoinTXidToIP.between(
+            SchemaTxid, SchemaIP,
+            mapping={NamecoinTXidToIP.DateTime: Header.date_time},
+            conditions=[not_empty(Header.domain), not_empty(Header.ip)])
 
 
 class NamecoinHistoryDomainIPDateMongoDB(Task):
@@ -186,7 +236,7 @@ class NamecoinHistoryDomainIPDateMongoDB(Task):
         return HeaderCollection(NamecoinDomainExplorer)
 
     def get_schemas(self):
-        return SchemaCollection(NamecoinDomainIP)
+        return SchemaCollection(NamecoinDomainIP, NamecoinDomainExtended)
 
     def get_enter_params(self):
 

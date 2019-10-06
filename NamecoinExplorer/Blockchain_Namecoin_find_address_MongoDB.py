@@ -65,7 +65,7 @@ def not_empty(field: Field):
     return Condition(field, Operations.NotEqual, '')
 
 
-def return_massive_about_txids(txids, server, user, password):
+def return_massive_about_addresses(addresses, server, user, password):
 
     def prepare_row_table_txids(line):
 
@@ -175,11 +175,10 @@ def return_massive_about_txids(txids, server, user, password):
         db = cl_mongo[dbname]
 
         search_dict = {'$or': []}
-        for txid in txids:
-            _tmp_dict = {'txid': {'$regex': f"^{txid}"}}
+        for address in addresses:
+            _tmp_dict = {'vout.scriptPubKey.addresses': {'$regex': f"^{address}"}}
             search_dict['$or'].append(_tmp_dict)
-            _tmp_dict = {'vin.txid':{'$regex': f"^{txid}"}}
-            search_dict['$or'].append(_tmp_dict)
+
         need_fields = {'_id': 0,
                        'hash':0,
                        'version':0,
@@ -347,23 +346,23 @@ class NamecoinNamecoinTxtoNamecoinAddress(metaclass=Schema):
         mapping={IPToDomain.Resolved: Header.date_time},
         conditions=[not_empty(Header.namecoin_domain), not_empty(Header.ip)])
 
-class NamecoinHistoryTxMongoDB(Task):
+class NamecoinHistoryAddressesMongoDB(Task):
 
     def __init__(self):
         super().__init__()
         self.info, self.error, self.result, self.api, self.api_key = [None] * 5
 
     def get_id(self):
-        return 'f9109ebe-dc5f-4c5b-ba06-1b32c30d8c84'
+        return '930c1bdd-2613-498e-bf2a-5868b03b99b2'
 
     def get_display_name(self):
-        return 'Explore Namecoin Transactions(MongoDB)'
+        return 'Explore Namecoin Addresses(MongoDB)'
 
     def get_category(self):
         return "Blockchain:\nNamecoin"
 
     def get_description(self):
-        return 'Return history operations\n\nEnter parameters "Transactions"'
+        return 'Return history operations\n\nEnter parameters "Addresses"'
 
     def get_weight_function(self):
         return 'txids'
@@ -386,10 +385,10 @@ class NamecoinHistoryTxMongoDB(Task):
 
     def get_enter_params(self):
         ep_coll = EnterParamCollection()
-        ep_coll.add_enter_param('txids', 'Namecoin txid', ValueType.String, is_array=True, required=True,
-                                value_sources=[NamecoinTXid.txid],
-                                description='Namecoin Transaction, e.g.:\n94a3ab7df4753a'
-                                            '\n32f8cc90 - (min. 8 symbols)')
+        ep_coll.add_enter_param('addresses', 'Namecoin addresses', ValueType.String, is_array=True, required=True,
+                                value_sources=[NamecoinAddress.namecoint_address,
+                                               NamecoinAddress.namecoint_address_short],
+                                description='Namecoin Address, e.g.:\nMzHtiNhzd - (min. 8 symbols)')
         ep_coll.add_enter_param('server', 'Host with MongoDB', ValueType.String, is_array=False, required=True,
                                 default_value="68.183.0.119:27017")
         ep_coll.add_enter_param('usermongodb', 'user', ValueType.String, is_array=False, required=True,
@@ -403,10 +402,10 @@ class NamecoinHistoryTxMongoDB(Task):
         user = enter_params.usermongodb
         password = enter_params.passwordmongodb
 
-        txids = set([a.strip() for a in enter_params.txids])
+        addresses = set([a.strip() for a in enter_params.addresses])
 
-        log_writer.info("Number of txids:{}".format(len(txids)))
-        result_lines = return_massive_about_txids(txids, server, user, password)
+        log_writer.info("Number of txids:{}".format(len(addresses)))
+        result_lines = return_massive_about_addresses(addresses, server, user, password)
 
         table_txids = []
         table_addresses = []
@@ -438,7 +437,7 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        txids = ['32f8cc90e2679e160b482']
+        addresses = ['MzHtiNhzd']
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"
@@ -460,4 +459,4 @@ if __name__ == '__main__':
         def error(cls, message, *args):
             print(message, *args)
 
-    NamecoinHistoryTxMongoDB().execute(EnterParamsFake, WriterFake, WriterFake, None)
+    NamecoinHistoryAddressesMongoDB().execute(EnterParamsFake, WriterFake, WriterFake, None)
