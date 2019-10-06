@@ -183,6 +183,7 @@ class NamecoinTXid(metaclass=Object):
 class NamecoinTXidToDomain(metaclass=Link):
     name = Utils.make_link_name(NamecoinTXid, Domain)
     DateTime = Attributes.System.Datetime
+    CaptionAttrs = [DateTime]
     Begin = NamecoinTXid
     End = Domain
 
@@ -190,6 +191,7 @@ class NamecoinTXidToDomain(metaclass=Link):
 class NamecoinTXidToIP(metaclass=Link):
     name = Utils.make_link_name(NamecoinTXid, IP)
     DateTime = Attributes.System.Datetime
+    CaptionAttrs = [DateTime]
     Begin = NamecoinTXid
     End = IP
 

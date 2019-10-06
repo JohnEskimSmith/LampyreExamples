@@ -257,6 +257,7 @@ class NamecoinTXidToNamecoinTXid(metaclass=Link):
 class NamecoinTXidToDomain(metaclass=Link):
     name = Utils.make_link_name(NamecoinTXid, Domain)
     DateTime = Attributes.System.Datetime
+    CaptionAttrs = [DateTime]
     Begin = NamecoinTXid
     End = Domain
 
@@ -264,6 +265,7 @@ class NamecoinTXidToDomain(metaclass=Link):
 class NamecoinTXidToIP(metaclass=Link):
     name = Utils.make_link_name(NamecoinTXid, IP)
     DateTime = Attributes.System.Datetime
+    CaptionAttrs = [DateTime]
     Begin = NamecoinTXid
     End = IP
 
@@ -274,7 +276,7 @@ class NamecoinTXidToAddress(metaclass=Link):
     Value = Attribute("Coins(Value)", ValueType.Float)
     Domain = Attributes.System.Domain
     Operation = Attributes.System.Description
-    CaptionAttrs = [Value, Domain, Operation]
+    CaptionAttrs = [Value, Domain, Operation, DateTime]
     Begin = NamecoinTXid
     End = NamecoinAddress
 
@@ -282,6 +284,7 @@ class NamecoinTXidToAddress(metaclass=Link):
 class NamecoinAddressToIP(metaclass=Link):
     name = Utils.make_link_name(NamecoinAddress, IP)
     DateTime = Attributes.System.Datetime
+    CaptionAttrs = [DateTime]
     Begin = NamecoinAddress
     End = IP
 
@@ -289,6 +292,7 @@ class NamecoinAddressToIP(metaclass=Link):
 class NamecoinAddressToDomain(metaclass=Link):
     name = Utils.make_link_name(NamecoinAddress, Domain)
     DateTime = Attributes.System.Datetime
+    CaptionAttrs = [DateTime]
     Begin = NamecoinAddress
     End = Domain
 
