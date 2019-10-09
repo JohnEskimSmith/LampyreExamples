@@ -132,8 +132,6 @@ def return_massive_about_addresses(addresses, server, user, password):
                         yield {'value': for_yield_line,
                                'type': 'addresses'}
 
-
-
     def return_info(search_dict, need_fields):
         rows = db[collection_name_tx].find(search_dict, need_fields)
         massive_all = [row for row in rows]
@@ -177,13 +175,13 @@ def return_massive_about_addresses(addresses, server, user, password):
             search_dict['$or'].append(_tmp_dict)
 
         need_fields = {'_id': 0,
-                       'hash':0,
-                       'version':0,
-                       'size':0,
-                       'locktime':0,
-                       'clean_name':0,
-                       'clean_op':0,
-                       'vsize':0
+                       'hash': 0,
+                       'version': 0,
+                       'size': 0,
+                       'locktime': 0,
+                       'clean_name': 0,
+                       'clean_op': 0,
+                       'vsize': 0
                        }
         for line in return_info(search_dict, need_fields):
             yield line
@@ -210,10 +208,10 @@ class NamecoinTXnExplorer_in(metaclass=Header):
 
 class NamecoinTXnExplorer_out(metaclass=Header):
     display_name = 'Namecoin Explorer(TX) Output'
-    date_time = Field('Date and time Block', ValueType.Datetime) #
-    hash_block = Field('hash_block', ValueType.String) #
-    txid = Field('txid', ValueType.String) #
-    short_txid = Field('Short txid(8)', ValueType.String) #
+    date_time = Field('Date and time Block', ValueType.Datetime)
+    hash_block = Field('hash_block', ValueType.String)
+    txid = Field('txid', ValueType.String)
+    short_txid = Field('Short txid(8)', ValueType.String)
     address =  Field('address', ValueType.String)
     short_address = Field('Short address(10)', ValueType.String)
     value = Field('Value(coins)', ValueType.Float)
@@ -340,7 +338,7 @@ class NamecoinNamecoinTxtoNamecoinAddress(metaclass=Schema):
     SchemaAddressToDomain = NamecoinAddressToDomain.between(SchemaAddress, SchemaDomain,
                                                     mapping={NamecoinAddressToDomain.DateTime: Header.date_time},
                                                     conditions=[not_empty(Header.namecoin_domain)]
-                                                    )
+                                                            )
 
     SchemaIPToDomain = IPToDomain.between(
         SchemaIP, SchemaDomain,
@@ -377,8 +375,7 @@ class NamecoinHistoryAddressesMongoDB(Task):
                   mapping_flags=[GraphMappingFlags.Completely],
                   schemas=[NamecoinNamecoinTxtoNamecoinTx]),
             Macro(name=f'Namecoin schema: Namecoin transaction {Constants.RIGHTWARDS_ARROW} other(address, domain, ip)',
-                 mapping_flags=[GraphMappingFlags.Completely],
-                 schemas=[NamecoinNamecoinTxtoNamecoinAddress])
+                 mapping_flags=[GraphMappingFlags.Completely], schemas=[NamecoinNamecoinTxtoNamecoinAddress])
         )
 
     def get_schemas(self):
