@@ -152,9 +152,6 @@ def return_massive_about_addresses(addresses, server, user, password):
                 row['height_block'] = _cache[row['blockhash']]
             rows_for_table_txids_lampyre = prepare_row_table_txids(row)
             rows_for_table_addresses_lampyre = prepare_row_table_address(row)
-            # for _row in rows_for_table_lampyre:
-            #     # yield _row
-            # yield row
             for line in rows_for_table_txids_lampyre:
                 yield line
             for line in rows_for_table_addresses_lampyre:
