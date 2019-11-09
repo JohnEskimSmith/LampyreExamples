@@ -4,6 +4,7 @@ __author__ = 'sai'
 import time
 from pymongo import MongoClient
 
+
 try:
     from ontology import (Object, Link, Attribute,
         Task, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
@@ -67,7 +68,7 @@ def prepare_row_txaddress(line):
                                 yield _tmp
 
 
-def return_massive_simple_about_txids_1(txids, server, user, password):
+def return_massive_simple_about_addresses_1(addresses, server, user, password):
 
     def return_info_simple(search_dict, need_fields):
         rows = db[collection_name_tx].find(search_dict, need_fields)
@@ -92,24 +93,24 @@ def return_massive_simple_about_txids_1(txids, server, user, password):
         db = cl_mongo[dbname]
 
         search_dict = {'$or': []}
-        for txid in txids:
-            _tmp_dict = {'txid': {'$regex': f"^{txid}"}}
+        for address in addresses:
+            _tmp_dict = {'vout.scriptPubKey.addresses': {'$regex': f"^{address}"}}
             search_dict['$or'].append(_tmp_dict)
 
         need_fields = {'_id': 0,
-                       'hash':0,
-                       'version':0,
+                       'hash': 0,
+                       'version': 0,
                        'size':0,
-                       'locktime':0,
-                       'clean_name':0,
-                       'clean_op':0,
-                       'vsize':0
+                       'locktime': 0,
+                       'clean_name': 0,
+                       'clean_op': 0,
+                       'vsize': 0
                        }
         for line in return_info_simple(search_dict, need_fields):
             yield line
 
 
-def return_massive_simple_about_txids_2(txids, server, user, password):
+def return_massive_simple_about_txids_2(_txids, server, user, password):
 
     if ':' in server:
         ip, port = server.split(":")
@@ -123,11 +124,13 @@ def return_massive_simple_about_txids_2(txids, server, user, password):
     cl_mongo = init_connect_to_mongodb(ip, port, dbname, user, password)
     if cl_mongo:
         db = cl_mongo[dbname]
+        need_fields = {'_id':0,
+                       'txid':1}
+        search_dict = {'vin.txid':{"$in": _txids}}
+        rows = db[collection_name_tx].find(search_dict, need_fields)
+        txids = [row['txid'] for row in rows]
 
-        search_dict = {'$or': []}
-        for txid in txids:
-            _tmp_dict = {'txid': {'$regex': f"^{txid}"}}
-            search_dict['$or'].append(_tmp_dict)
+        search_dict = {'txid':{"$in": txids}}
 
         need_fields = {'_id': 0,
                        'vin': 1,
@@ -169,6 +172,16 @@ class UnionTxAddress(metaclass=Header):
     short_address = Field('Short address(8)', ValueType.String)
     value = Field('Value(coins, NMC)', ValueType.Float)
     direction = Field('Direction Integer', ValueType.Integer)
+
+#
+# class SimpleAddressTx(metaclass=Header):
+#     display_name = f'Namecoin Simple: Address{Constants.RIGHTWARDS_ARROW}Tx'
+#     date_time = Field('Date and time Block', ValueType.Datetime)
+#     address = Field('address', ValueType.String)
+#     short_address = Field('Short address(8)', ValueType.String)
+#     value = Field('Value(coins, NMC)', ValueType.Float)
+#     txid = Field('txid', ValueType.String)
+#     short_txid = Field('Short txid(8)', ValueType.String)
 
 
 class NamecoinTXid(metaclass=Object):
@@ -217,7 +230,6 @@ def check_direction_2(field: Field):
 
 class SchemaNamecoinUnioanTxAddressValues(metaclass=Schema):
     name = f'Namecoin schemas: \n1. transaction {Constants.RIGHTWARDS_ARROW} address(value)\n2. address(value) {Constants.LEFTWARDS_ARROW} transaction'
-
     Header = UnionTxAddress
 
     SchemaNamecoinTXid = SchemaObject(NamecoinTXid, mapping={NamecoinTXid.txid: Header.txid,
@@ -239,17 +251,17 @@ class SchemaNamecoinUnioanTxAddressValues(metaclass=Schema):
         conditions=[check_direction_2(Header.direction)])
 
 
-class NamecoinHistoryChainSearchTXMongoDB(Task):
+class NamecoinHistoryChainSearchAddressesMongoDB(Task):
 
     def __init__(self):
         super().__init__()
         self.info, self.error, self.result, self.api, self.api_key = [None] * 5
 
     def get_id(self):
-        return '82f3e9d8-37c9-4c0d-ab42-eda9ff644bd7'
+        return '838bed91-36d1-47b2-9be9-4607aed59829'
 
     def get_display_name(self):
-        return 'Chain search by transaction Namecoin(MongoDB)'
+        return 'Chain search by address Namecoin(MongoDB)'
 
     def get_category(self):
         return "Blockchain:\nNamecoin"
@@ -268,8 +280,10 @@ class NamecoinHistoryChainSearchTXMongoDB(Task):
 
     def get_enter_params(self):
         ep_coll = EnterParamCollection()
-        ep_coll.add_enter_param('txids', 'Namecoin txid', ValueType.String, is_array=True, required=True,
-                              description='Namecoin identificators, e.g.:\nid transaction')
+        ep_coll.add_enter_param('addresses', 'Namecoin addresses', ValueType.String, is_array=True, required=True,
+                                value_sources=[NamecoinAddress.namecoint_address,
+                                               NamecoinAddress.namecoint_address_short],
+                                description='Namecoin Address, e.g.:\nMzHtiNhz - (min. 8 symbols)')
         ep_coll.add_enter_param('server', 'Host with MongoDB', ValueType.String, is_array=False, required=True,
                                 default_value="68.183.0.119:27017")
         ep_coll.add_enter_param('usermongodb', 'user', ValueType.String, is_array=False, required=True,
@@ -282,13 +296,15 @@ class NamecoinHistoryChainSearchTXMongoDB(Task):
         server = enter_params.server
         user = enter_params.usermongodb
         password = enter_params.passwordmongodb
-        txids = set([a.strip() for a in enter_params.txids])
+        addresses = set([a.strip() for a in enter_params.addresses])
 
+        _table = list(return_massive_simple_about_addresses_1(addresses, server, user, password))
+        need_input_tx = list(set([row['txid'] for row in _table]))
+
+        table = []
         union_table = []
         fields_table = UnionTxAddress.get_fields()
 
-        _table = return_massive_simple_about_txids_1(txids, server, user, password)
-        table = []
         for row in _table:
             row['SymbolDirection'] = Constants.RIGHTWARDS_ARROW
             row['direction'] = 1
@@ -302,7 +318,7 @@ class NamecoinHistoryChainSearchTXMongoDB(Task):
             union_table.append(tmp)
 
 
-        _table = return_massive_simple_about_txids_2(txids, server, user, password)
+        _table = return_massive_simple_about_txids_2(need_input_tx, server, user, password)
         table = []
         for row in _table:
             row['SymbolDirection'] = Constants.LEFTWARDS_ARROW
@@ -321,12 +337,11 @@ class NamecoinHistoryChainSearchTXMongoDB(Task):
 
 
 
-
 if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        txids = ["14b00d10"]
+        addresses = ["N2rgk2Ev"]
 
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
@@ -349,4 +364,4 @@ if __name__ == '__main__':
         def error(cls, message, *args):
             print(message, *args)
 
-    NamecoinHistoryChainSearchTXMongoDB().execute(EnterParamsFake, WriterFake, WriterFake, None)
+    NamecoinHistoryChainSearchAddressesMongoDB().execute(EnterParamsFake, WriterFake, WriterFake, None)
