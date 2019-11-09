@@ -9,6 +9,7 @@ ONTOLOGY_ID = 'b811dc34-b029-46fb-a030-8094fc3ce096'
 class Constants:
     # arrow for link names, e.g. "Domain → Email"
     RIGHTWARDS_ARROW = '\u2192'
+    LEFTWARDS_ARROW = '\u2190'
     EN_DASH = '\u2013'
 # endregion
 
