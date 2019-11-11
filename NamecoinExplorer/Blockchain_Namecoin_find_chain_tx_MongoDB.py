@@ -13,7 +13,7 @@ except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
 
-chain_symbol_1 = '\u21ad'
+chain_symbol_1 = '\u293f'
 
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
     """

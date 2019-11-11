@@ -74,7 +74,7 @@ def return_massive_about_addresses(addresses, server, user, password):
 
         _result['date_time'] = line['clean_datetime_block']
         _result['txid'] = line['txid']
-        _result['short_txid'] = line['txid'][:9]
+        _result['short_txid'] = line['txid'][:8]
         _result['hash_block'] = line['blockhash']
         if 'vin' in line:
             if isinstance(line['vin'], list):
@@ -82,7 +82,7 @@ def return_massive_about_addresses(addresses, server, user, password):
                     if 'txid' in tx:
                         for_yield_line = _result.copy()
                         for_yield_line['txid_in'] = tx['txid']
-                        for_yield_line['short_txid_in'] = tx['txid'][:9]
+                        for_yield_line['short_txid_in'] = tx['txid'][:8]
                         yield {'value':for_yield_line,
                                'type': 'txids'}
 
@@ -93,7 +93,7 @@ def return_massive_about_addresses(addresses, server, user, password):
 
         _result['date_time'] = line['clean_datetime_block']
         _result['txid'] = line['txid']
-        _result['short_txid'] = line['txid'][:9]
+        _result['short_txid'] = line['txid'][:8]
         _result['hash_block'] = line['blockhash']
         _result_massive = []
         if 'vout' in line:
@@ -107,7 +107,7 @@ def return_massive_about_addresses(addresses, server, user, password):
                         if 'addresses' in el['scriptPubKey']:
                             if isinstance(el['scriptPubKey']['addresses'], list):
                                 for_yield_line['address']= el['scriptPubKey']['addresses'][0]
-                                for_yield_line['short_address'] = el['scriptPubKey']['addresses'][0][:9]
+                                for_yield_line['short_address'] = el['scriptPubKey']['addresses'][0][:8]
                         if 'nameOp' in el['scriptPubKey']:
                             if 'op' in el['scriptPubKey']['nameOp']:
                                 for_yield_line['nameOp'] = el['scriptPubKey']['nameOp']['op']

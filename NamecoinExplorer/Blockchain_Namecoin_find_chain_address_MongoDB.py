@@ -15,7 +15,7 @@ except ImportError as ontology_exception:
     raise ontology_exception
 
 
-chain_symbol_1 = '\u21ad'
+chain_symbol_1 = '\u293e'
 
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
     """

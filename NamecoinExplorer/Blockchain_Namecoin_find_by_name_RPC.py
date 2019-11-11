@@ -109,7 +109,7 @@ def name_history_one(domain, value, server, user, password):
 
         if 'txid' in row:
             tmp_result['txid'] = row['txid']
-            tmp_result['short_txid'] = row['txid'][:9]
+            tmp_result['short_txid'] = row['txid'][:8]
 
         _keys = ['address', 'height', 'expired', 'expires_in']
         for k in _keys:

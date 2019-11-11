@@ -64,7 +64,7 @@ def return_massive_about_domains_between_dates(start, stop, what_about_ip, serve
             _result['height'] = line['height_block']
             _result['hash_block'] = line['blockhash']
             _result['txid'] = line['txid']
-            _result['short_txid'] = line['txid'][:9]
+            _result['short_txid'] = line['txid'][:8]
             try:
                 _result['operation'] =  line['clean_op'].strip()
             except:
