@@ -15,6 +15,8 @@ except ImportError as ontology_exception:
     raise ontology_exception
 
 
+chain_symbol_1 = '\u21ad'
+
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
     """
     :param ip:  ip server MongoDB
@@ -279,6 +281,12 @@ class NamecoinHistoryChainSearchAddressesMongoDB(Task):
 
     def get_schemas(self):
         return SchemaCollection(SchemaNamecoinUnioanTxAddressValues)
+
+    def get_graph_macros(self):
+        return MacroCollection(
+            Macro(name=f'{chain_symbol_1} search by Namecoin Address', mapping_flags=[GraphMappingFlags.Completely],
+                  schemas=[SchemaNamecoinUnioanTxAddressValues]))
+
 
     def get_enter_params(self):
         ep_coll = EnterParamCollection()

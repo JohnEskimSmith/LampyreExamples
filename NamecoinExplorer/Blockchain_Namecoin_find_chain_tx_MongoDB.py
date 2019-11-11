@@ -13,6 +13,7 @@ except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
 
+chain_symbol_1 = '\u21ad'
 
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
     """
@@ -269,9 +270,16 @@ class NamecoinHistoryChainSearchTXMongoDB(Task):
     def get_schemas(self):
         return SchemaCollection(SchemaNamecoinUnioanTxAddressValues)
 
+    def get_graph_macros(self):
+        return MacroCollection(
+            Macro(name=f'{chain_symbol_1} search by Namecoin Transaction', mapping_flags=[GraphMappingFlags.Completely],
+                  schemas=[SchemaNamecoinUnioanTxAddressValues]))
+
     def get_enter_params(self):
         ep_coll = EnterParamCollection()
         ep_coll.add_enter_param('txids', 'Namecoin txid', ValueType.String, is_array=True, required=True,
+                              value_sources=[NamecoinTXid.txid,
+                                             NamecoinTXid.txid_short],
                               description='Namecoin identificators, e.g.:\nid transaction')
         ep_coll.add_enter_param('server', 'Host with MongoDB', ValueType.String, is_array=False, required=True,
                                 default_value="68.183.0.119:27017")
