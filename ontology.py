@@ -1045,6 +1045,11 @@ class IPToPerson(metaclass=Link):
     End = Person
 
 
+class IPToNetblock(metaclass=Link):
+    Begin = IP
+    End = Netblock
+
+
 class IPToAPT(metaclass=Link):
     name = Utils.make_link_name(IP, APT)
 

@@ -6,16 +6,33 @@ from pymongo import MongoClient
 import ipaddress
 import re
 
-try:
-    from ontology import (Object, Link, Attribute,
-        Task, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
-        MacroCollection, Schema, EnterParamCollection, SchemaCollection, GraphMappingFlags, BinaryType, Constants,
-        Attributes, IP, Domain, IPToDomain)
 
+# region Import System Ontology
+try:
+    from ontology import (
+        Object, Task, Link, Attribute, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
+        MacroCollection, Schema, EnterParamCollection, SchemaCollection, GraphMappingFlags, BinaryType, Constants,
+        Attributes, IP, Domain, IPToDomain, Netblock, IPToNetblock)
 
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
+# endregion
+
+
+# region load Namecoin Ontology
+try:
+    from NamecoinOntology import (NamecoinTXnExplorer_in, NamecoinTXid, NamecoinTXidToNamecoinTXid,
+                                  NamecoinTXnExplorer_out, NamecoinAddress, NamecoinTXidToAddress,
+                                  NamecoinAddressToIP, NamecoinAddressToDomain,
+                                  NamecoinDomainExplorer, NamecoinTXidToDomain,
+                                  NamecoinTXidToIP, NamecoinTXidToAddressValue, NamecoinAddressToTXidValue,
+                                  UnionTxAddress)
+except ImportError as ontology_exception:
+    print('...missing or invalid ontology')
+    raise ontology_exception
+# endregion
+
 
 def return_ip(text):
     result = []
@@ -31,6 +48,7 @@ def return_ip(text):
                 pass
     if len(result) > 0:
         return result
+
 
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
     """
@@ -201,102 +219,6 @@ def return_namecoin(namedomain):
             return {'domain': namedomain[2:]+'.bit', 'namecoin_domain': namedomain}
 
 
-
-class NamecoinTXnExplorer_in(metaclass=Header):
-    display_name = 'Namecoin Explorer(TX) Input'
-    date_time = Field('Date and time Block', ValueType.Datetime)
-    hash_block = Field('hash_block', ValueType.String)
-    txid = Field('txid', ValueType.String)
-    short_txid = Field('Short txid(8)', ValueType.String)
-    txid_in =  Field('vin txid', ValueType.String)
-    short_txid_in = Field('Short vin txid(8)', ValueType.String)
-
-
-class NamecoinTXnExplorer_out(metaclass=Header):
-    display_name = 'Namecoin Explorer(TX) Output'
-    date_time = Field('Date and time Block', ValueType.Datetime) #
-    hash_block = Field('hash_block', ValueType.String) #
-    txid = Field('txid', ValueType.String) #
-    short_txid = Field('Short txid(8)', ValueType.String) #
-    address =  Field('address', ValueType.String)
-    short_address = Field('Short address(10)', ValueType.String)
-    value = Field('Value(coins)', ValueType.Float)
-    nameOp = Field('Op', ValueType.String)
-    raw_name = Field('Raw name', ValueType.String)
-    value_scripts = Field('Value', ValueType.String)
-    namecoin_domain = Field('Domain(Namecoin)', ValueType.String)
-    ip = Field('ip', ValueType.String)
-
-
-class NamecoinTXid(metaclass=Object):
-    name = "Namecoin transaction"
-    txid = Attribute("Transaction id", ValueType.String)
-    txid_short = Attribute("Transaction id (short)", ValueType.String)
-    IdentAttrs = [txid]
-    CaptionAttrs = [txid_short]
-    Image = Utils.base64string(r"C:\habr\objects\TX.png")
-
-
-class NamecoinAddress(metaclass=Object):
-    name = "Namecoin address"
-    namecoint_address = Attribute("Namecoin address", ValueType.String)
-    namecoint_address_short = Attribute("Namecoin address (short)", ValueType.String)
-    IdentAttrs = [namecoint_address]
-    CaptionAttrs = [namecoint_address_short]
-    Image = Utils.base64string(r"C:\habr\objects\namecoin.png")
-
-
-class NamecoinTXidToNamecoinTXid(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, NamecoinTXid)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = NamecoinTXid
-
-
-class NamecoinTXidToDomain(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, Domain)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = Domain
-
-
-class NamecoinTXidToIP(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, IP)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = IP
-
-
-class NamecoinTXidToAddress(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, NamecoinAddress)
-    DateTime = Attributes.System.Datetime
-    Value = Attribute("Coins(Value)", ValueType.Float)
-    Domain = Attributes.System.Domain
-    Operation = Attributes.System.Description
-    CaptionAttrs = [Value, Domain, Operation, DateTime]
-    Begin = NamecoinTXid
-    End = NamecoinAddress
-
-
-class NamecoinAddressToIP(metaclass=Link):
-    name = Utils.make_link_name(NamecoinAddress, IP)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinAddress
-    End = IP
-
-
-class NamecoinAddressToDomain(metaclass=Link):
-    name = Utils.make_link_name(NamecoinAddress, Domain)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinAddress
-    End = Domain
-
-
 class NamecoinNamecoinTxtoNamecoinTx(metaclass=Schema):
     name = f'Namecoin schema: Namecoin transaction {Constants.RIGHTWARDS_ARROW} Namecoin transaction'
     Header = NamecoinTXnExplorer_in
@@ -350,6 +272,7 @@ class NamecoinNamecoinTxtoNamecoinAddress(metaclass=Schema):
         SchemaIP, SchemaDomain,
         mapping={IPToDomain.Resolved: Header.date_time},
         conditions=[not_empty(Header.namecoin_domain), not_empty(Header.ip)])
+
 
 class NamecoinHistoryTxMongoDB(Task):
 

@@ -4,15 +4,32 @@ __author__ = 'sai'
 import time
 from pymongo import MongoClient
 
+
+# region Import System Ontology
 try:
-    from ontology import (Object, Link, Attribute,
-        Task, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
+    from ontology import (
+        Object, Task, Link, Attribute, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
         MacroCollection, Schema, EnterParamCollection, SchemaCollection, GraphMappingFlags, BinaryType, Constants,
-        Attributes, IP, Domain, IPToDomain)
+        Attributes, IP, Domain, IPToDomain, Netblock, IPToNetblock)
+
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
+# endregion
 
+
+# region load Namecoin Ontology
+try:
+    from NamecoinOntology import (NamecoinTXnExplorer_in, NamecoinTXid, NamecoinTXidToNamecoinTXid,
+                                  NamecoinTXnExplorer_out, NamecoinAddress, NamecoinTXidToAddress,
+                                  NamecoinAddressToIP, NamecoinAddressToDomain,
+                                  NamecoinDomainExplorer, NamecoinTXidToDomain,
+                                  NamecoinTXidToIP, NamecoinTXidToAddressValue, NamecoinAddressToTXidValue,
+                                  UnionTxAddress)
+except ImportError as ontology_exception:
+    print('...missing or invalid ontology')
+    raise ontology_exception
+# endregion
 chain_symbol_1 = '\u293f'
 
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
@@ -160,54 +177,6 @@ def return_massive_simple_about_txids_2(txids, server, user, password):
             yield line
 
 
-class UnionTxAddress(metaclass=Header):
-    display_name = f'Namecoin Chain: Tx and Address'
-    date_time = Field('Date and time Block', ValueType.Datetime)
-    txid = Field('txid', ValueType.String)
-    short_txid = Field('Short txid(8)', ValueType.String)
-    SymbolDirection = Field('Direction', ValueType.String)
-    address = Field('address', ValueType.String)
-    short_address = Field('Short address(8)', ValueType.String)
-    value = Field('Value(coins, NMC)', ValueType.Float)
-    direction = Field('Direction Integer', ValueType.Integer)
-
-
-class NamecoinTXid(metaclass=Object):
-    name = "Namecoin transaction"
-    txid = Attribute("Transaction id", ValueType.String)
-    txid_short = Attribute("Transaction id (short)", ValueType.String)
-    IdentAttrs = [txid]
-    CaptionAttrs = [txid_short]
-    Image = Utils.base64string(r"C:\habr\objects\TX.png")
-
-
-class NamecoinAddress(metaclass=Object):
-    name = "Namecoin address"
-    namecoint_address = Attribute("Namecoin address", ValueType.String)
-    namecoint_address_short = Attribute("Namecoin address (short)", ValueType.String)
-    IdentAttrs = [namecoint_address]
-    CaptionAttrs = [namecoint_address_short]
-    Image = Utils.base64string(r"C:\habr\objects\namecoin.png")
-
-
-class NamecoinTXidToAddressValue(metaclass=Link):
-    name = 'Transaction to Address'
-    DateTime = Attributes.System.Datetime
-    Value = Attribute("Coins(Value)", ValueType.Float)
-    CaptionAttrs = [Value,  DateTime]
-    Begin = NamecoinTXid
-    End = NamecoinAddress
-
-
-class NamecoinAddressToTXidValue(metaclass=Link):
-    name = 'Address to Transaction'
-    DateTime = Attributes.System.Datetime
-    Value = Attribute("Coins(Value)", ValueType.Float)
-    CaptionAttrs = [Value,  DateTime]
-    Begin = NamecoinAddress
-    End = NamecoinTXid
-
-
 def check_direction_1(field: Field):
     return Condition(field, Operations.Equals, 1)
 
@@ -265,6 +234,8 @@ class NamecoinHistoryChainSearchTXMongoDB(Task):
         return 'txids'
 
     def get_headers(self):
+        htable = UnionTxAddress
+        htable.set_property(UnionTxAddress.direction.system_name, 'hidden', True)
         return HeaderCollection(UnionTxAddress)
 
     def get_schemas(self):

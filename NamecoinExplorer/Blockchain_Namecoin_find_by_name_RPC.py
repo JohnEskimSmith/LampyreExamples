@@ -12,6 +12,8 @@ from requests.auth import HTTPBasicAuth
 import urllib3
 urllib3.disable_warnings()
 
+
+# region Import System Ontology
 try:
     from ontology import (
         Object, Task, Link, Attribute, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
@@ -21,6 +23,20 @@ try:
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
+# endregion
+
+
+# region load Namecoin Ontology
+try:
+    from NamecoinOntology import (NamecoinTXnExplorer_in, NamecoinTXid, NamecoinTXidToNamecoinTXid,
+                                  NamecoinTXnExplorer_out, NamecoinAddress, NamecoinTXidToAddress,
+                                  NamecoinAddressToIP, NamecoinAddressToDomain,
+                                  NamecoinDomainExplorer, NamecoinTXidToDomain,
+                                  NamecoinTXidToIP)
+except ImportError as ontology_exception:
+    print('...missing or invalid ontology')
+    raise ontology_exception
+# endregion
 
 
 def return_ip(text):
@@ -188,45 +204,6 @@ def return_massive_about_domains(domains, server, threads, lg, user, password):
                 for line in result:
                     yield line
 
-
-class NamecoinDomainExplorer(metaclass=Header):
-    display_name = 'Namecoin Explorer'
-    date_time = Field('Date and time Block', ValueType.Datetime)
-    domain = Field('Domain', ValueType.String)
-    namecoin_domain = Field('Namecoin name', ValueType.String)
-    ip = Field('ip', ValueType.String)
-    Netblock = Field('Netblock', ValueType.String)
-    expired = Field('Status', ValueType.Boolean)
-    operation = Field('operation', ValueType.String)
-    address = Field('address', ValueType.String)
-    height = Field('height', ValueType.Integer)
-    hash_block = Field('hash_block', ValueType.String)
-    txid = Field('txid', ValueType.String)
-    short_txid = Field('Short txid(8)', ValueType.String)
-
-class NamecoinTXid(metaclass=Object):
-    name = "Namecoin transaction"
-    txid = Attribute("Transaction id", ValueType.String)
-    txid_short = Attribute("Transaction id (short)", ValueType.String)
-    IdentAttrs = [txid]
-    CaptionAttrs = [txid_short]
-    Image = Utils.base64string("C:\habr\objects\TX.png")
-
-
-class NamecoinTXidToDomain(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, Domain)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = Domain
-
-
-class NamecoinTXidToIP(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, IP)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = IP
 
 class NamecoinDomainIP(metaclass=Schema):
     name = 'Namecoin schema: Domain and IP'

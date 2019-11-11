@@ -5,6 +5,7 @@ import time
 from pymongo import MongoClient
 import ipaddress
 
+# region Import System Ontology
 try:
     from ontology import (
         Object, Task, Link, Attribute, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
@@ -14,6 +15,20 @@ try:
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
+# endregion
+
+
+# region load Namecoin Ontology
+try:
+    from NamecoinOntology import (NamecoinTXnExplorer_in, NamecoinTXid, NamecoinTXidToNamecoinTXid,
+                                  NamecoinTXnExplorer_out, NamecoinAddress, NamecoinTXidToAddress,
+                                  NamecoinAddressToIP, NamecoinAddressToDomain,
+                                  NamecoinDomainExplorer, NamecoinTXidToDomain,
+                                  NamecoinTXidToIP)
+except ImportError as ontology_exception:
+    print('...missing or invalid ontology')
+    raise ontology_exception
+# endregion
 
 
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
@@ -48,6 +63,7 @@ def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
 def not_empty(field: Field):
     return Condition(field, Operations.NotEqual, '')
 
+
 def valid_ip(address):
     """
     Checks if string is a valid ip-address
@@ -60,6 +76,7 @@ def valid_ip(address):
         return True
     except:
         return False
+
 
 def return_massive_about_ips(ips, server, user, password):
 
@@ -125,9 +142,6 @@ def return_massive_about_ips(ips, server, user, password):
             yield line
 
 
-
-
-
 def return_namecoin(namedomain):
     if namedomain.endswith(".bit"):
         return {'domain':namedomain,
@@ -135,47 +149,6 @@ def return_namecoin(namedomain):
     elif namedomain.startswith('d/'):
         return {'domain':namedomain[2:]+'.bit',
                 'namecoin_domain':namedomain}
-
-
-class NamecoinDomainExplorer(metaclass=Header):
-    display_name = 'Namecoin Explorer'
-    date_time = Field('Date and time Block', ValueType.Datetime)
-    domain = Field('Domain', ValueType.String)
-    namecoin_domain = Field('Namecoin name', ValueType.String)
-    ip = Field('ip', ValueType.String)
-    Netblock = Field('Netblock', ValueType.String)
-    expired = Field('Status', ValueType.Boolean)
-    operation = Field('operation', ValueType.String)
-    address = Field('address', ValueType.String)
-    height = Field('height', ValueType.Integer)
-    hash_block = Field('hash_block', ValueType.String)
-    txid = Field('txid', ValueType.String)
-    short_txid = Field('Short txid(8)', ValueType.String)
-
-
-class NamecoinTXid(metaclass=Object):
-    name = "Namecoin transaction"
-    txid = Attribute("Transaction id", ValueType.String)
-    txid_short = Attribute("Transaction id (short)", ValueType.String)
-    IdentAttrs = [txid]
-    CaptionAttrs = [txid_short]
-    Image = Utils.base64string("C:\habr\objects\TX.png")
-
-
-class NamecoinTXidToDomain(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, Domain)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = Domain
-
-
-class NamecoinTXidToIP(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, IP)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = IP
 
 
 class NamecoinDomainIP(metaclass=Schema):
@@ -214,6 +187,7 @@ class NamecoinDomainExtended(metaclass=Schema):
             SchemaTxid, SchemaIP,
             mapping={NamecoinTXidToIP.DateTime: Header.date_time},
             conditions=[not_empty(Header.domain), not_empty(Header.ip)])
+
 
 class NamecoinHistoryIPDomainMongoDB(Task):
 
@@ -282,14 +256,12 @@ class NamecoinHistoryIPDomainMongoDB(Task):
             result_writer.write_line(tmp, header_class=NamecoinDomainExplorer)
             i += 1
 
+
 if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        # ips = ['185.82.218.112']
         ips = ['132.148.40.220', '185.126.202.186', '37.44.213.187', '50.248.53.221']
-        # ips = ['144.76.12.6']
-        # ips = ['37.44.213.187']
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"

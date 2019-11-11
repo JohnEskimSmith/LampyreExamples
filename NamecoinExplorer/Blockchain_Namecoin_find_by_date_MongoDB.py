@@ -5,16 +5,29 @@ import time
 from pymongo import MongoClient
 from datetime import timedelta, datetime
 
-
+# region Import System Ontology
 try:
     from ontology import (
         Object, Task, Link, Attribute, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
         MacroCollection, Schema, EnterParamCollection, RelativeDate, ReferencePoint, SchemaCollection, GraphMappingFlags,
         BinaryType, Constants, Attributes, IP, Domain, IPToDomain)
-
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
+# endregion
+
+
+# region load Namecoin Ontology
+try:
+    from NamecoinOntology import (NamecoinTXnExplorer_in, NamecoinTXid, NamecoinTXidToNamecoinTXid,
+                                  NamecoinTXnExplorer_out, NamecoinAddress, NamecoinTXidToAddress,
+                                  NamecoinAddressToIP, NamecoinAddressToDomain,
+                                  NamecoinDomainExplorer, NamecoinTXidToDomain,
+                                  NamecoinTXidToIP)
+except ImportError as ontology_exception:
+    print('...missing or invalid ontology')
+    raise ontology_exception
+# endregion
 
 
 def init_connect_to_mongodb(ip, port, dbname, username=None, password=None):
@@ -132,47 +145,6 @@ def return_namecoin(namedomain):
         return {'domain':namedomain, 'namecoin_domain': f"d/{namedomain[:-4]}"}
     elif namedomain.startswith('d/'):
         return {'domain':namedomain[2:]+'.bit', 'namecoin_domain':namedomain}
-
-
-class NamecoinDomainExplorer(metaclass=Header):
-    display_name = 'Namecoin Explorer'
-    date_time = Field('Date and time Block', ValueType.Datetime)
-    domain = Field('Domain', ValueType.String)
-    namecoin_domain = Field('Namecoin name', ValueType.String)
-    ip = Field('ip', ValueType.String)
-    Netblock = Field('Netblock', ValueType.String)
-    expired = Field('Status', ValueType.Boolean)
-    operation = Field('operation', ValueType.String)
-    address = Field('address', ValueType.String)
-    height = Field('height', ValueType.Integer)
-    hash_block = Field('hash_block', ValueType.String)
-    txid = Field('txid', ValueType.String)
-    short_txid = Field('Short txid(8)', ValueType.String)
-
-
-class NamecoinTXid(metaclass=Object):
-    name = "Namecoin transaction"
-    txid = Attribute("Transaction id", ValueType.String)
-    txid_short = Attribute("Transaction id (short)", ValueType.String)
-    IdentAttrs = [txid]
-    CaptionAttrs = [txid_short]
-    Image = Utils.base64string("C:\habr\objects\TX.png")
-
-
-class NamecoinTXidToDomain(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, Domain)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = Domain
-
-
-class NamecoinTXidToIP(metaclass=Link):
-    name = Utils.make_link_name(NamecoinTXid, IP)
-    DateTime = Attributes.System.Datetime
-    CaptionAttrs = [DateTime]
-    Begin = NamecoinTXid
-    End = IP
 
 
 class NamecoinDomainIP(metaclass=Schema):
@@ -294,8 +266,8 @@ if __name__ == '__main__':
     DEBUG = True
 
     class EnterParamsFake:
-        start_date = datetime.strptime('2019-09-21', '%Y-%m-%d')
-        stop_date = datetime.strptime('2019-09-22', '%Y-%m-%d')
+        start_date = datetime.strptime('2019-10-21', '%Y-%m-%d')
+        stop_date = datetime.strptime('2019-10-22', '%Y-%m-%d')
         server = "68.183.0.119:27017"
         usermongodb = "anonymous"
         passwordmongodb = "anonymous"
