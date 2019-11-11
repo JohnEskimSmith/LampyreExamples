@@ -223,17 +223,20 @@ class SchemaNamecoinUnioanTxAddressValues(metaclass=Schema):
     SchemaNamecoinTXid = SchemaObject(NamecoinTXid, mapping={NamecoinTXid.txid: Header.txid,
                                                                NamecoinTXid.txid_short: Header.short_txid})
 
-    SchemaAddress = SchemaObject(NamecoinAddress, mapping={NamecoinAddress.namecoint_address: Header.address,
+    SchemaAddress1 = SchemaObject(NamecoinAddress, mapping={NamecoinAddress.namecoint_address: Header.address,
                                                            NamecoinAddress.namecoint_address_short: Header.short_address})
 
+    SchemaAddress2 = SchemaObject(NamecoinAddress, mapping={NamecoinAddress.namecoint_address: Header.address,
+                                                            NamecoinAddress.namecoint_address_short: Header.short_address})
+
     SchemaLinkTxtoAddressValues = NamecoinTXidToAddressValue.between(
-        SchemaNamecoinTXid, SchemaAddress,
+        SchemaNamecoinTXid, SchemaAddress1,
         mapping={NamecoinTXidToAddressValue.DateTime: Header.date_time,
                  NamecoinTXidToAddressValue.Value: Header.value},
         conditions=[check_direction_1(Header.direction)])
 
     SchemaLinkAddresstoTxValues = NamecoinAddressToTXidValue.between(
-        SchemaAddress, SchemaNamecoinTXid,
+        SchemaAddress2, SchemaNamecoinTXid,
         mapping={NamecoinAddressToTXidValue.DateTime: Header.date_time,
                  NamecoinAddressToTXidValue.Value: Header.value},
         conditions=[check_direction_2(Header.direction)])
