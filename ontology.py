@@ -1050,6 +1050,19 @@ class IPToNetblock(metaclass=Link):
     End = Netblock
 
 
+class NetblockToAutonomousSystem(metaclass=Link):
+    Begin = Netblock
+    End = AutonomousSystem
+
+class AutonomousSystemToOrganisation(metaclass=Link):
+    name = Utils.make_link_name(AutonomousSystem, Organisation)
+
+    Value = Attributes.System.Value
+
+    Begin = AutonomousSystem
+    End = Organisation
+
+
 class IPToAPT(metaclass=Link):
     name = Utils.make_link_name(IP, APT)
 
