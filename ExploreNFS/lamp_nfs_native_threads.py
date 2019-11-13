@@ -3,8 +3,8 @@
 #
 # Author: Hegusung
 # https://github.com/hegusung/RPCScan
-#1. Changed for request with Lampyre: Insurgent2018 (https://habr.com/ru/post/444382/)
-#2. Changed for request with Lampyre: sai aka eskim.john.smith
+#1. Changed for request with Lampyre: Skhomenko Andrey (https://habr.com/ru/post/444382/)
+#2. Changed for request with Lampyre: Skhomenko Andrey
 
 from ipaddress import ip_address, ip_network, IPv4Network, IPv6Network, IPv4Address, IPv6Address
 import collections
@@ -16,14 +16,12 @@ import time
 from random import randint
 import datetime
 from json import dumps
-from os.path import join as join_path
 
 try:
     from ontology import (
         Task, Header, Object, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
         MacroCollection, Schema, EnterParamCollection, SchemaCollection, GraphMappingFlags, BinaryType, Constants,
-        Attributes, IP, Domain, Entity, Link, Netblock)
-
+        Attributes, IP, Domain, Entity, Link, Netblock, ShareNFS)
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
@@ -820,14 +818,6 @@ class NFSHeader(metaclass=Header):
     status = Field('raw record', ValueType.String)
 
 
-class ShareNFS(metaclass=Object):
-    FilePath = Attributes.FilePath
-    Filename = Attributes.System.Filename
-    IdentAttrs = [FilePath]
-    CaptionAttrs = [Filename]
-    Image = Utils.base64string(join_path('../static/icons/common', 'directory.png'))
-
-
 class ShareNFSToIP(metaclass=Link):
     name = Utils.make_link_name(ShareNFS, IP)
 
@@ -961,7 +951,6 @@ class SearchDataNFS(Task):
         unpack_network = enter_params.unpack_network
         max_threads = enter_params.max_threads
         scan_network = set(map(lambda z:z.strip(), enter_params.ips))
-
         time_for_connect = enter_params.timeout
         from warnings import filterwarnings
         filterwarnings("ignore")
@@ -994,8 +983,9 @@ if __name__ == '__main__':
     filterwarnings("ignore")
 
     class EnterParameters:
-        ips = ['46.32.248.0/24']
+        # ips = ['46.32.248.0/24']
         # ips = ['46.32.248.187', '46.32.248.141']
+        ips = ['192.168.2.0/24']
         unpack_network = False
         max_threads = 16
         timeout = 5

@@ -5,11 +5,11 @@ Author: [Hegusung](https://github.com/hegusung/RPCScan)
 
 Changed for request with **Lampyre.io**
 
-1. Changed for request with Lampyre: [Insurgent2018(ru)](https://habr.com/ru/post/444382/)
+1. Changed for request with Lampyre: [Skhomenko Andrey](https://habr.com/ru/post/444382/)
 
-2. Changed for request with Lampyre: "sai" aka [eskim.john.smith](https://twitter.com/JohnEskimSmith)
+2. Changed for request with Lampyre: "Skhomenko Andrey" aka [eskim.john.smith](https://twitter.com/JohnEskimSmith)
 
-_Need install Python 3.6_
+_Need install Python 3.7_
 
 
 1. Download and reg. Lampyre client from [Lampyre.io](https://lampyre.io)
