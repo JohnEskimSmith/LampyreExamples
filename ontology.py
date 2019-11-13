@@ -1,10 +1,13 @@
 from lighthouse import *
-from os.path import join as join_path
+from os.path import join as join_path, exists as exists_file
+import requests
 
 NAME = 'System ontology'
 ONTOLOGY_ID = 'b811dc34-b029-46fb-a030-8094fc3ce096'
 
-
+SERVER_RESOURCE = "68.183.0.119"
+netblock_icon = "4e011ecb-2b92-4935-8276-6cb39c560270"
+folder_icon = "1a03e461-f68d-4d51-8c77-6cc92fc459ec"
 # region Constants
 class Constants:
     # arrow for link names, e.g. "Domain → Email"
@@ -1000,7 +1003,30 @@ class Netblock(metaclass=Object):
     Netblock = Attributes.Netblock
 
     IdentAttrs = CaptionAttrs = [Netblock]
-    Image = Utils.base64string(join_path('static/icons/common', 'netblock.png'))
+
+    # some changes
+    if exists_file(join_path('static/icons/common', 'netblock.png')):
+        Image = Utils.base64string(join_path('static/icons/common', 'netblock.png'))
+    else:
+        try:
+            Image = requests.get(f"http://{SERVER_RESOURCE}/objects/ico/{netblock_icon}", timeout=3).text
+        except:
+            pass
+
+
+class ShareNFS(metaclass=Object):
+    FilePath = Attributes.FilePath
+    Filename = Attributes.System.Filename
+    IdentAttrs = [FilePath]
+    CaptionAttrs = [Filename]
+    if exists_file(join_path('static/icons/common', 'directory.png')):
+        Image = Utils.base64string(join_path('static/icons/common', 'directory.png'))
+    else:
+        try:
+            Image = requests.get(f"http://{SERVER_RESOURCE}/objects/ico/{folder_icon}", timeout=3).text
+        except:
+            pass
+
 
 # endregion
 # endregion
