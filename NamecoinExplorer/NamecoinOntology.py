@@ -1,16 +1,19 @@
 # -*- coding: utf8 -*-
 __author__ = 'sai'
 from lighthouse import *
-from os.path import join as join_path
+from os.path import join as join_path, exists as exists_file
+import requests
 
 NAME = 'Namecoin ontology'
 ONTOLOGY_ID = '94fe7a33-89c0-499b-946c-4b4523f59d61'
+namecoin_icon = "09a04984-6f63-4d5e-b1d0-9145c47d578f"
+tx_icon = "7cfb90b8-a530-4f62-baae-070097b08176"
 
 try:
     from ontology import (Object, Link, Attribute,
         Task, Header, HeaderCollection, Utils, Field, ValueType, SchemaLink, SchemaObject, Condition, Operations, Macro,
         MacroCollection, Schema, EnterParamCollection, SchemaCollection, GraphMappingFlags, BinaryType, Constants,
-        Attributes, IP, Domain, IPToDomain)
+        Attributes, IP, Domain, IPToDomain, SERVER_RESOURCE)
 except ImportError as ontology_exception:
     print('...missing or invalid ontology')
     raise ontology_exception
@@ -76,7 +79,15 @@ class NamecoinTXid(metaclass=Object):
     txid_short = Attribute("Transaction id (short)", ValueType.String)
     IdentAttrs = [txid]
     CaptionAttrs = [txid_short]
-    Image = Utils.base64string(r"images\TX.png")
+    # some changes
+    if exists_file(r"images\TX.png"):
+        Image = Utils.base64string(r"images\TX.png")
+    else:
+        try:
+            Image = requests.get(f"http://{SERVER_RESOURCE}/objects/ico/{tx_icon}", timeout=3).text
+        except:
+            pass
+
 
 
 class NamecoinAddress(metaclass=Object):
@@ -85,7 +96,15 @@ class NamecoinAddress(metaclass=Object):
     namecoint_address_short = Attribute("Namecoin address (short)", ValueType.String)
     IdentAttrs = [namecoint_address]
     CaptionAttrs = [namecoint_address_short]
-    Image = Utils.base64string(r"images\namecoin.png")
+    # some changes
+    if exists_file(r"images\namecoin.png"):
+        Image = Utils.base64string(r"images\namecoin.png")
+    else:
+        try:
+            Image = requests.get(f"http://{SERVER_RESOURCE}/objects/ico/{namecoin_icon}", timeout=3).text
+        except:
+            pass
+
 
 
 class NamecoinTXidToNamecoinTXid(metaclass=Link):
